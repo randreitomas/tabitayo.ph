@@ -21,7 +21,7 @@ const ROWS: PricingRow[] = [
 function CheckIcon() {
   return (
     <span
-      className="inline-flex items-center justify-center w-5 h-5 rounded-sm bg-[#3d8b5f] text-white"
+      className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-sage/50 text-dark border border-sage/60"
       aria-label="Included"
     >
       <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none" aria-hidden>
@@ -39,7 +39,7 @@ function CheckIcon() {
 
 function CrossIcon() {
   return (
-    <span className="text-[#c45c5c] font-body text-lg leading-none" aria-label="Not included">
+    <span className="text-muted/60 font-body text-lg leading-none" aria-label="Not included">
       ×
     </span>
   )
@@ -54,34 +54,38 @@ function Cell({ value }: { value: CellValue }) {
 
 export function PricingTable() {
   return (
-    <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-      <table className="w-full min-w-[520px] border-collapse bg-ivory font-body text-dark">
+    <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 rounded-sm border border-border bg-ivory">
+      <table className="w-full min-w-[520px] border-collapse font-body text-dark">
         <thead>
-          <tr className="border-b border-border">
-            <th className="w-[38%] py-4 pr-4" />
-            <th className="py-4 px-3 text-center font-heading font-semibold text-lg md:text-xl">
+          <tr className="border-b border-border bg-[#f3ede6]/50">
+            <th className="w-[38%] py-5 pr-4" />
+            <th className="py-5 px-3 text-center font-heading font-semibold text-lg md:text-xl text-dark">
               Free
             </th>
-            <th className="py-4 px-3 text-center font-heading font-semibold text-lg md:text-xl">
+            <th className="py-5 px-3 text-center font-heading font-semibold text-lg md:text-xl text-dark bg-dusty-rose/10 border-x border-dusty-rose/20">
               <span className="block">Standard</span>
-              <span className="block text-base md:text-lg font-semibold mt-0.5">₱799</span>
+              <span className="block text-base md:text-lg font-semibold mt-1 text-muted">
+                ₱799
+              </span>
             </th>
-            <th className="py-4 px-3 text-center font-heading font-semibold text-lg md:text-xl">
+            <th className="py-5 px-3 text-center font-heading font-semibold text-lg md:text-xl text-dark">
               <span className="block">Premium</span>
-              <span className="block text-base md:text-lg font-semibold mt-0.5">₱1,999</span>
+              <span className="block text-base md:text-lg font-semibold mt-1 text-muted">
+                ₱1,999
+              </span>
             </th>
           </tr>
         </thead>
         <tbody>
           {ROWS.map((row) => (
-            <tr key={row.feature} className="border-b border-border last:border-b">
-              <td className="py-4 pr-4 text-left text-sm md:text-base font-body text-dark">
+            <tr key={row.feature} className="border-b border-border/80 last:border-b-0">
+              <td className="py-4 pr-4 pl-4 md:pl-5 text-left text-sm md:text-base text-dark">
                 {row.feature}
               </td>
               <td className="py-4 px-3 text-center">
                 <Cell value={row.free} />
               </td>
-              <td className="py-4 px-3 text-center">
+              <td className="py-4 px-3 text-center bg-dusty-rose/5 border-x border-dusty-rose/15">
                 <Cell value={row.standard} />
               </td>
               <td className="py-4 px-3 text-center">

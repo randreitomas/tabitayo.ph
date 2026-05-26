@@ -1,4 +1,4 @@
-import type { EventMenu } from '@/types/event'
+import type { Event, EventMenu, MenuDisplayMode } from '@/types/event'
 
 export const MENU_COURSE_LABELS = {
   appetizer: 'Appetizer',
@@ -51,4 +51,17 @@ export function normalizeMenu(menu?: EventMenu): EventMenu {
     main: menu?.main ?? '',
     dessert: menu?.dessert ?? '',
   }
+}
+
+export function inferMenuDisplayMode(event: Pick<Event, 'menuDisplayMode' | 'menuImageUrl' | 'menu'>): MenuDisplayMode {
+  if (event.menuDisplayMode) return event.menuDisplayMode
+  if (event.menuImageUrl) return 'image'
+  if (hasAnyMenu(event.menu)) return 'text'
+  return 'text'
+}
+
+export function hasMenuForGuests(event: Pick<Event, 'menuDisplayMode' | 'menuImageUrl' | 'menu'>): boolean {
+  const mode = inferMenuDisplayMode(event)
+  if (mode === 'image') return Boolean(event.menuImageUrl)
+  return hasAnyMenu(event.menu)
 }

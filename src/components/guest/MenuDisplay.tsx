@@ -3,9 +3,24 @@ import { getMenuCourses } from '@/lib/menu'
 
 interface MenuDisplayProps {
   menu?: EventMenu
+  menuImageUrl?: string
 }
 
-export function MenuDisplay({ menu }: MenuDisplayProps) {
+export function MenuDisplay({ menu, menuImageUrl }: MenuDisplayProps) {
+  if (menuImageUrl) {
+    return (
+      <div>
+        <h3 className="font-heading text-xl text-center mb-4">Menu</h3>
+        <img
+          src={menuImageUrl}
+          alt="Event menu"
+          className="w-full rounded-sm border border-border object-contain max-h-[28rem] mx-auto"
+        />
+        <p className="text-xs text-muted text-center mt-2">Pinch to zoom on your device</p>
+      </div>
+    )
+  }
+
   const courses = getMenuCourses(menu)
 
   if (courses.length === 0) return null

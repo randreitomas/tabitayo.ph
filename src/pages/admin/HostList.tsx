@@ -4,6 +4,7 @@ import type { HostAccount } from '@/types/user'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 export function HostList() {
   const [hosts, setHosts] = useState<HostAccount[]>([])
@@ -21,8 +22,11 @@ export function HostList() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="font-heading text-3xl">Hosts</h1>
+    <div className="space-y-8">
+      <PageHeader
+        title="Hosts"
+        description="Review new host accounts and manage access."
+      />
 
       {loading ? (
         <p className="text-muted">Loading hosts...</p>
@@ -33,7 +37,7 @@ export function HostList() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="font-heading text-xl">{host.displayName}</h2>
+                    <h2 className="font-heading text-xl md:text-2xl text-dark">{host.displayName}</h2>
                     <Badge
                       variant={
                         host.status === 'approved'
@@ -54,7 +58,11 @@ export function HostList() {
                 </div>
                 <div className="flex gap-2">
                   {host.status === 'pending' && (
-                    <Button size="sm" onClick={() => setStatus(host.id, 'approved')}>
+                    <Button
+                      size="sm"
+                      variant="accent"
+                      onClick={() => setStatus(host.id, 'approved')}
+                    >
                       Approve
                     </Button>
                   )}

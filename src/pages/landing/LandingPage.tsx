@@ -1,37 +1,13 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { LandingHeader } from '@/components/landing/LandingHeader'
-import { LogoFull } from '@/components/logo/LogoFull'
+import { LandingHero } from '@/components/landing/LandingHero'
+import { LandingSection, SectionIntro } from '@/components/landing/LandingSection'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { PricingTable } from '@/components/landing/PricingTable'
 import { BusinessTeaser } from '@/components/landing/BusinessTeaser'
 import { MarketingFooter } from '@/components/landing/MarketingFooter'
-
-function Section({
-  id,
-  children,
-  className = '',
-  alt = false,
-}: {
-  id: string
-  children: ReactNode
-  className?: string
-  alt?: boolean
-}) {
-  return (
-    <section
-      id={id}
-      className={[
-        'scroll-mt-20 py-16 md:py-24 px-4',
-        alt ? 'bg-border/25' : '',
-        className,
-      ].join(' ')}
-    >
-      <div className="max-w-4xl mx-auto">{children}</div>
-    </section>
-  )
-}
 
 const FAQS = [
   {
@@ -52,6 +28,97 @@ const FAQS = [
   },
 ]
 
+const TESTIMONIALS = [
+  {
+    quote:
+      'Our 300-guest wedding ran smoother than any spreadsheet we tried before.',
+    name: 'Maria & James',
+    event: 'Tagaytay garden wedding',
+  },
+  {
+    quote:
+      'Debut parents were thrilled — guests found seats in seconds on their phones.',
+    name: 'Ana Cruz family',
+    event: 'Manila debut',
+  },
+  {
+    quote:
+      'Corporate check-in felt premium. QR on each table tent was a nice touch.',
+    name: 'Acme Events',
+    event: 'Year-end gala, BGC',
+  },
+]
+
+const GUEST_STEPS = [
+  {
+    step: '1',
+    title: 'Scan the QR',
+    body: 'Open the event page from a QR at the entrance or on table cards.',
+  },
+  {
+    step: '2',
+    title: 'Search their name',
+    body: 'Fuzzy matching handles nicknames, “Ma.”, hyphenated surnames, and aliases.',
+  },
+  {
+    step: '3',
+    title: 'See table & seat',
+    body: 'Table, seat, floor plan, menu, and playlist — all on one page.',
+  },
+]
+
+const HOST_STEPS = [
+  {
+    step: '1',
+    title: 'Create your event',
+    body: 'Set the name, date, venue, and tier. Toggle photo share for premium events.',
+  },
+  {
+    step: '2',
+    title: 'Import your guest list',
+    body: 'Add guests manually or upload a CSV with names, tables, and seats.',
+  },
+  {
+    step: '3',
+    title: 'Share the QR & relax',
+    body: 'Download your QR, add floor plan and menu, approve photos — done.',
+  },
+]
+
+function StepList({
+  items,
+  accent,
+}: {
+  items: typeof GUEST_STEPS
+  accent: 'rose' | 'sage'
+}) {
+  const ring =
+    accent === 'rose'
+      ? 'border-dusty-rose/50 bg-dusty-rose/20 text-dark'
+      : 'border-sage/50 bg-sage/25 text-dark'
+
+  return (
+    <ol className="space-y-6">
+      {items.map((item) => (
+        <li key={item.step} className="flex gap-4">
+          <span
+            className={[
+              'shrink-0 w-10 h-10 rounded-full border flex items-center justify-center font-heading text-lg',
+              ring,
+            ].join(' ')}
+          >
+            {item.step}
+          </span>
+          <div className="pt-0.5">
+            <h4 className="font-heading text-lg md:text-xl text-dark mb-1">{item.title}</h4>
+            <p className="text-sm text-muted leading-relaxed">{item.body}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 export function LandingPage() {
   const location = useLocation()
 
@@ -65,208 +132,93 @@ export function LandingPage() {
   }, [location.hash])
 
   return (
-    <div className="min-h-dvh bg-ivory">
+    <div className="min-h-dvh bg-ivory text-dark">
       <LandingHeader />
-
-      {/* Hero / Home */}
-      <section
-        id="home"
-        className="scroll-mt-20 relative overflow-hidden px-4 pt-12 pb-20 md:pt-20 md:pb-28"
-      >
-        <div
-          className="absolute inset-0 pointer-events-none"
-          aria-hidden
-          style={{
-            background:
-              'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(232, 196, 184, 0.35) 0%, transparent 70%)',
-          }}
-        />
-        <div className="max-w-3xl mx-auto text-center relative">
-          <LogoFull size="lg" className="mb-8" />
-          <p className="text-xs uppercase tracking-[0.25em] text-muted mb-4">
-            Philippine event seat finder
-          </p>
-          <h1 className="font-heading text-4xl md:text-6xl leading-tight mb-6">
-            Every guest finds their seat —{' '}
-            <span className="italic text-dusty-rose">without the chaos</span>
-          </h1>
-          <p className="text-base md:text-lg text-muted max-w-xl mx-auto mb-10 leading-relaxed">
-            Weddings, debuts, and corporate galas deserve a calm arrival. Tabitayo helps guests
-            scan, search, and sit — while you focus on the celebration.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/register">
-              <Button size="lg">Start as host</Button>
-            </Link>
-            <Link to="/e/evt-demo">
-              <Button size="lg" variant="secondary">
-                Try guest demo
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
+      <LandingHero />
       <BusinessTeaser />
 
-      {/* Feedback */}
-      <Section id="feedback">
-        <p className="text-xs uppercase tracking-widest text-muted text-center mb-3">Feedback</p>
-        <h2 className="font-heading text-3xl md:text-4xl text-center mb-4">
-          Loved by hosts across Luzon, Visayas & Mindanao
-        </h2>
-        <p className="text-center text-muted max-w-2xl mx-auto mb-10">
-          Early partners told us the same thing: ushers spent less time answering “Table ko
-          saan?” and more time welcoming guests.
-        </p>
-        <div className="grid md:grid-cols-3 gap-4">
-          {[
-            {
-              quote:
-                'Our 300-guest wedding ran smoother than any spreadsheet we tried before.',
-              name: 'Maria & James',
-              event: 'Tagaytay garden wedding',
-            },
-            {
-              quote:
-                'Debut parents were thrilled — guests found seats in seconds on their phones.',
-              name: 'Ana Cruz family',
-              event: 'Manila debut',
-            },
-            {
-              quote:
-                'Corporate check-in felt premium. QR on each table tent was a nice touch.',
-              name: 'Acme Events',
-              event: 'Year-end gala, BGC',
-            },
-          ].map((t) => (
-            <Card key={t.name} padding="md" className="flex flex-col">
-              <p className="text-sm italic leading-relaxed flex-1">&ldquo;{t.quote}&rdquo;</p>
-              <p className="font-heading text-lg mt-4">{t.name}</p>
-              <p className="text-xs text-muted">{t.event}</p>
+      <LandingSection id="feedback">
+        <SectionIntro
+          eyebrow="Feedback"
+          title="Loved by hosts across Luzon, Visayas & Mindanao"
+          description="Early partners told us ushers spent less time answering “Table ko saan?” and more time welcoming guests."
+        />
+        <div className="grid md:grid-cols-3 gap-5 md:gap-6">
+          {TESTIMONIALS.map((t) => (
+            <Card
+              key={t.name}
+              padding="md"
+              className="flex flex-col border-border/80 hover:border-dusty-rose/40 transition-colors"
+            >
+              <p className="text-sm md:text-base italic leading-relaxed flex-1 text-dark/90">
+                &ldquo;{t.quote}&rdquo;
+              </p>
+              <div className="mt-6 pt-4 border-t border-border/60">
+                <p className="font-heading text-xl text-dark">{t.name}</p>
+                <p className="text-xs text-muted mt-1">{t.event}</p>
+              </div>
             </Card>
           ))}
         </div>
-      </Section>
+      </LandingSection>
 
-      {/* How it works */}
-      <Section id="how-it-works" alt>
-        <p className="text-xs uppercase tracking-widest text-muted text-center mb-3">
-          How it works
-        </p>
-        <h2 className="font-heading text-3xl md:text-4xl text-center mb-10">
-          Simple for guests, easy for hosts
-        </h2>
-        <div className="grid md:grid-cols-2 gap-10 md:gap-12 max-w-4xl mx-auto">
-          <div>
-            <h3 className="font-heading text-2xl text-center mb-6 text-dusty-rose">For guests</h3>
-            <ol className="space-y-6">
-              {[
-                {
-                  step: '1',
-                  title: 'Scan the QR',
-                  body: 'Open the event page from a QR at the entrance or on table cards.',
-                },
-                {
-                  step: '2',
-                  title: 'Search their name',
-                  body: 'Fuzzy matching handles nicknames, “Ma.”, hyphenated surnames, and aliases.',
-                },
-                {
-                  step: '3',
-                  title: 'See table & seat',
-                  body: 'Table, seat, floor plan, menu, and playlist — all on one page.',
-                },
-              ].map((item) => (
-                <li key={item.step} className="flex gap-4">
-                  <span className="shrink-0 w-9 h-9 rounded-full border border-dusty-rose/60 bg-dusty-rose/20 flex items-center justify-center font-heading text-base">
-                    {item.step}
-                  </span>
-                  <div>
-                    <h4 className="font-heading text-lg mb-0.5">{item.title}</h4>
-                    <p className="text-sm text-muted">{item.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+      <LandingSection id="how-it-works" alt wide>
+        <SectionIntro
+          eyebrow="How it works"
+          title="Simple for guests, easy for hosts"
+          description="Two sides of the same celebration — one link for everyone."
+        />
+        <div className="grid md:grid-cols-2 gap-12 lg:gap-16">
+          <div className="rounded-sm border border-border bg-ivory p-6 md:p-8">
+            <h3 className="font-heading text-2xl md:text-3xl text-center mb-8 text-dusty-rose">
+              For guests
+            </h3>
+            <StepList items={GUEST_STEPS} accent="rose" />
           </div>
-          <div>
-            <h3 className="font-heading text-2xl text-center mb-6 text-sage">For hosts</h3>
-            <ol className="space-y-6">
-              {[
-                {
-                  step: '1',
-                  title: 'Create your event',
-                  body: 'Set the name, date, venue, and tier. Toggle photo share for premium events.',
-                },
-                {
-                  step: '2',
-                  title: 'Import your guest list',
-                  body: 'Add guests manually or upload a CSV with names, tables, and seats.',
-                },
-                {
-                  step: '3',
-                  title: 'Share the QR & relax',
-                  body: 'Download your QR, add floor plan and menu, approve photos — done.',
-                },
-              ].map((item) => (
-                <li key={item.step} className="flex gap-4">
-                  <span className="shrink-0 w-9 h-9 rounded-full border border-sage/60 bg-sage/25 flex items-center justify-center font-heading text-base">
-                    {item.step}
-                  </span>
-                  <div>
-                    <h4 className="font-heading text-lg mb-0.5">{item.title}</h4>
-                    <p className="text-sm text-muted">{item.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+          <div className="rounded-sm border border-border bg-ivory p-6 md:p-8">
+            <h3 className="font-heading text-2xl md:text-3xl text-center mb-8 text-sage">
+              For hosts
+            </h3>
+            <StepList items={HOST_STEPS} accent="sage" />
           </div>
         </div>
-        <div className="text-center mt-10 flex flex-wrap justify-center gap-3">
+        <div className="text-center mt-12 flex flex-wrap justify-center gap-3">
           <Link to="/e/evt-demo">
-            <Button variant="secondary">Try guest demo</Button>
+            <Button variant="secondary" size="lg">
+              Try guest demo
+            </Button>
           </Link>
           <Link to="/register">
-            <Button>Create free event</Button>
+            <Button size="lg">Create free event</Button>
           </Link>
         </div>
-      </Section>
+      </LandingSection>
 
-      {/* FAQs */}
-      <Section id="faqs" alt>
-        <p className="text-xs uppercase tracking-widest text-muted text-center mb-3">FAQs</p>
-        <h2 className="font-heading text-3xl md:text-4xl text-center mb-10">
-          Questions we hear often
-        </h2>
-        <dl className="space-y-6 max-w-2xl mx-auto">
+      <LandingSection id="faqs" alt narrow>
+        <SectionIntro eyebrow="FAQs" title="Questions we hear often" />
+        <dl className="space-y-0 max-w-2xl mx-auto">
           {FAQS.map((faq) => (
-            <div key={faq.q} className="border-b border-border pb-6 last:border-0">
-              <dt className="font-heading text-lg mb-2">{faq.q}</dt>
-              <dd className="text-sm text-muted">{faq.a}</dd>
+            <div key={faq.q} className="border-b border-border py-6 first:pt-0 last:border-0">
+              <dt className="font-heading text-lg md:text-xl text-dark mb-2">{faq.q}</dt>
+              <dd className="text-sm md:text-base text-muted leading-relaxed">{faq.a}</dd>
             </div>
           ))}
         </dl>
-      </Section>
+      </LandingSection>
 
-      {/* Pricing */}
-      <Section id="pricing">
-        <div className="max-w-3xl mx-auto">
-          <p className="text-xs uppercase tracking-widest text-muted text-center mb-3">Pricing</p>
-          <h2 className="font-heading text-3xl md:text-4xl text-center mb-4">
-            Simple tiers for every celebration
-          </h2>
-          <p className="text-center text-muted text-sm mb-10 max-w-lg mx-auto">
-            Per event. No subscriptions. Upgrade anytime before your big day.
-          </p>
-          <PricingTable />
-          <div className="text-center mt-10">
-            <Link to="/register">
-              <Button>Get started</Button>
-            </Link>
-          </div>
+      <LandingSection id="pricing" wide>
+        <SectionIntro
+          eyebrow="Pricing"
+          title="Simple tiers for every celebration"
+          description="Per event. No subscriptions. Upgrade anytime before your big day."
+        />
+        <PricingTable />
+        <div className="text-center mt-12">
+          <Link to="/register">
+            <Button size="lg">Get started</Button>
+          </Link>
         </div>
-      </Section>
+      </LandingSection>
 
       <MarketingFooter />
     </div>

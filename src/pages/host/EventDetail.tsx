@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvent'
 import { updateEvent, getEventPhotos, updatePhotoStatus } from '@/lib/api'
-import type { EventMenu, PhotoShareItem } from '@/types/event'
+import type { PhotoShareItem } from '@/types/event'
 import { Tabs, type TabItem } from '@/components/ui/Tabs'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -41,10 +41,6 @@ export function EventDetail() {
     setEvent(updated)
   }
 
-  const saveMenu = async (menu: EventMenu | undefined) => {
-    await saveEventPatch({ menu })
-  }
-
   const tabs: TabItem[] = [
     {
       id: 'guests',
@@ -59,7 +55,7 @@ export function EventDetail() {
     {
       id: 'menu',
       label: 'Menu',
-      content: <MenuEditor event={event} onSave={saveMenu} />,
+      content: <MenuEditor event={event} onUpdated={setEvent} />,
     },
     {
       id: 'playlist',
@@ -101,6 +97,7 @@ export function EventDetail() {
                     <div className="flex gap-2">
                       <Button
                         size="sm"
+                        variant="accent"
                         onClick={async () => {
                           await updatePhotoStatus(photo.id, 'approved')
                           setPhotos(await getEventPhotos(event.id))
@@ -146,7 +143,9 @@ export function EventDetail() {
           <Link to="/host/events" className="text-xs text-muted hover:text-dark">
             ← All events
           </Link>
-          <h1 className="font-heading text-3xl mt-1">{event.name}</h1>
+          <h1 className="font-heading text-3xl md:text-4xl mt-1 text-dark tracking-tight">
+            {event.name}
+          </h1>
           <p className="text-sm text-muted mt-1">
             {event.venue} · {new Date(event.date).toLocaleDateString('en-PH')}
           </p>

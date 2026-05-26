@@ -21,7 +21,7 @@ function HeaderLabel({ children }: { children: ReactNode }) {
 }
 
 const navLinkClass =
-  'flex h-16 items-center justify-center px-2.5 m-0 border-0 bg-transparent cursor-pointer text-muted hover:text-dark transition-colors whitespace-nowrap font-body no-underline'
+  'flex h-16 items-center justify-center px-2.5 m-0 border-0 bg-transparent cursor-pointer text-muted hover:text-dark transition-colors whitespace-nowrap font-body no-underline border-b-2 border-transparent -mb-px'
 
 export function LandingHeader() {
   const scrollTo = useScrollToSection()
@@ -53,7 +53,12 @@ export function LandingHeader() {
   }
 
   const navItemClass = (item: NavItem) =>
-    [navLinkClass, isActive(item) ? 'text-dark' : ''].filter(Boolean).join(' ')
+    [
+      navLinkClass,
+      isActive(item) ? 'text-dark font-medium border-dusty-rose' : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
 
   return (
     <header
@@ -105,7 +110,7 @@ export function LandingHeader() {
             <HeaderLabel>Log in</HeaderLabel>
           </Link>
           <Link to="/register" className="flex h-16 items-center no-underline">
-            <span className="inline-flex items-center justify-center px-4 py-[7px] rounded-sm bg-dark text-ivory text-sm font-body leading-none hover:bg-dark/90 transition-colors">
+            <span className="inline-flex items-center justify-center px-4 py-[7px] rounded-sm bg-dusty-rose text-dark text-sm font-body leading-none hover:bg-dusty-rose/85 border border-dusty-rose transition-colors">
               Get started
             </span>
           </Link>
@@ -116,7 +121,7 @@ export function LandingHeader() {
             <HeaderLabel>Log in</HeaderLabel>
           </Link>
           <Link to="/register" className="flex h-16 items-center no-underline">
-            <span className="inline-flex items-center justify-center px-3 py-[7px] rounded-sm bg-dark text-ivory text-sm font-body leading-none">
+            <span className="inline-flex items-center justify-center px-3 py-[7px] rounded-sm bg-dusty-rose text-dark text-sm font-body leading-none border border-dusty-rose">
               Get started
             </span>
           </Link>
@@ -175,7 +180,7 @@ export function LandingHeader() {
               </Link>
               <Link
                 to="/register"
-                className="flex-1 inline-flex items-center justify-center py-2.5 rounded-sm bg-dark text-ivory text-sm font-body leading-none no-underline"
+                className="flex-1 inline-flex items-center justify-center py-2.5 rounded-sm bg-dusty-rose text-dark text-sm font-body leading-none no-underline border border-dusty-rose"
                 onClick={closeMenu}
               >
                 Get started

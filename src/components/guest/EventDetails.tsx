@@ -1,5 +1,5 @@
 import type { Event } from '@/types/event'
-import { hasAnyMenu } from '@/lib/menu'
+import { hasMenuForGuests, inferMenuDisplayMode } from '@/lib/menu'
 import { FloorPlan } from '@/components/guest/FloorPlan'
 import { MenuDisplay } from '@/components/guest/MenuDisplay'
 import { PhotoGallery } from '@/components/guest/PhotoGallery'
@@ -10,7 +10,8 @@ interface EventDetailsProps {
 
 export function EventDetails({ event }: EventDetailsProps) {
   const showFloorPlan = Boolean(event.floorPlanUrl)
-  const showMenu = hasAnyMenu(event.menu)
+  const showMenu = hasMenuForGuests(event)
+  const menuMode = inferMenuDisplayMode(event)
   const showPlaylist = Boolean(event.spotifyUrl?.trim())
   const showPhotos = event.photoShareEnabled
 
@@ -30,7 +31,12 @@ export function EventDetails({ event }: EventDetailsProps) {
         <FloorPlan imageUrl={event.floorPlanUrl} eventName={event.name} />
       )}
 
-      {showMenu && <MenuDisplay menu={event.menu} />}
+      {showMenu && (
+        <MenuDisplay
+          menu={menuMode === 'text' ? event.menu : undefined}
+          menuImageUrl={menuMode === 'image' ? event.menuImageUrl : undefined}
+        />
+      )}
 
       {showPlaylist && (
         <div>

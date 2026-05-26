@@ -7,6 +7,7 @@ import { APPROVAL_LABELS, approvalBadgeVariant } from '@/lib/eventApproval'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 export function HostDashboard() {
   const { user } = useAuthContext()
@@ -19,13 +20,15 @@ export function HostDashboard() {
   }, [user])
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="font-heading text-3xl">Your events</h1>
+    <div className="space-y-8">
+      <PageHeader
+        title="Your events"
+        description="Manage seating, menus, and guest pages for each celebration."
+      >
         <Link to="/host/events/new">
           <Button>Create event</Button>
         </Link>
-      </div>
+      </PageHeader>
 
       {loading ? (
         <p className="text-muted">Loading events...</p>
@@ -40,7 +43,7 @@ export function HostDashboard() {
               <Link to={`/host/events/${event.id}`}>
                 <Card className="hover:border-dusty-rose/60 transition-colors h-full">
                   <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
-                    <h2 className="font-heading text-xl">{event.name}</h2>
+                    <h2 className="font-heading text-xl md:text-2xl text-dark">{event.name}</h2>
                     <div className="flex gap-1 flex-wrap">
                       <Badge variant={approvalBadgeVariant(event.approvalStatus)}>
                         {APPROVAL_LABELS[event.approvalStatus]}

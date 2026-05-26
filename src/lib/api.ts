@@ -25,7 +25,7 @@ import {
   loginMessage,
   logoutMessage,
 } from './activityLog'
-import { readImageAsDataUrl, isFloorPlanImage } from './fileUpload'
+import { readImageAsDataUrl, isUploadableImage } from './fileUpload'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
@@ -256,7 +256,7 @@ export async function uploadEventFloorPlan(eventId: string, file: File): Promise
     return data
   }
 
-  if (!isFloorPlanImage(file)) {
+  if (!isUploadableImage(file)) {
     throw new Error('Invalid file type')
   }
 
@@ -273,6 +273,46 @@ export async function uploadEventFloorPlan(eventId: string, file: File): Promise
         actor,
         'configure_event',
         `${actor.displayName} uploaded floor plan for ${events[idx].name}`,
+        events[idx]
+      )
+    )
+  }
+
+  return delay(events[idx])
+}
+
+export async function uploadEventMenuImage(eventId: string, file: File): Promise<Event> {
+  if (!USE_MOCK) {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await api.post<Event>(`/events/${eventId}/menu-image`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  }
+
+  if (!isUploadableImage(file)) {
+    throw new Error('Invalid file type')
+  }
+
+  const dataUrl = await readImageAsDataUrl(file)
+  const idx = events.findIndex((e) => e.id === eventId)
+  if (idx === -1) throw new Error('Event not found')
+
+  events[idx] = {
+    ...events[idx],
+    menuDisplayMode: 'image',
+    menuImageUrl: dataUrl,
+    menu: undefined,
+  }
+
+  const actor = await getCurrentUser()
+  if (actor) {
+    appendActivityLog(
+      buildLogFromUser(
+        actor,
+        'configure_event',
+        `${actor.displayName} uploaded menu image for ${events[idx].name}`,
         events[idx]
       )
     )

@@ -31,7 +31,7 @@ export function Tabs({ tabs, activeId, onChange }: TabsProps) {
             className={[
               'shrink-0 px-3 py-2.5 text-xs sm:text-sm font-body whitespace-nowrap border-b-2 -mb-px transition-colors',
               tab.id === activeId
-                ? 'border-dark text-dark'
+                ? 'border-dusty-rose text-dark font-medium'
                 : 'border-transparent text-muted hover:text-dark',
             ].join(' ')}
           >

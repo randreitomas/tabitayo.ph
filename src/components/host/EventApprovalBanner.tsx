@@ -54,7 +54,7 @@ export function EventApprovalBanner({ event, onUpdated }: EventApprovalBannerPro
   const showSubmit = event.approvalStatus === 'pending_payment'
 
   return (
-    <Card padding="md" className="border-gold/50 bg-gold/10 space-y-4">
+    <Card padding="md" className="border-gold/40 bg-gold/15 space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
         <Badge variant={approvalBadgeVariant(event.approvalStatus)}>
           {APPROVAL_LABELS[event.approvalStatus]}
@@ -96,6 +96,7 @@ export function EventApprovalBanner({ event, onUpdated }: EventApprovalBannerPro
 
       {showSubmit && (
         <Button
+          variant="accent"
           disabled={submitting}
           onClick={async () => {
             setSubmitting(true)

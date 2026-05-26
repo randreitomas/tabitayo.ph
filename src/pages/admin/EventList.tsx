@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 export function AdminEventList() {
   const [events, setEvents] = useState<Event[]>([])
@@ -60,34 +61,29 @@ export function AdminEventList() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-3xl">All events</h1>
-          <p className="text-sm text-muted mt-1">
-            Approve events after manual payment is confirmed (GCash / bank transfer).
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant={filter === 'pending' ? 'primary' : 'secondary'}
-            size="sm"
-            onClick={() => setFilter('pending')}
-          >
-            Pending approval ({pending.filter((e) => e.approvalStatus === 'payment_submitted').length})
-          </Button>
-          <Button
-            variant={filter === 'all' ? 'primary' : 'secondary'}
-            size="sm"
-            onClick={() => setFilter('all')}
-          >
-            All events
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="All events"
+        description="Approve events after manual payment is confirmed (GCash / bank transfer)."
+      >
+        <Button
+          variant={filter === 'pending' ? 'accent' : 'secondary'}
+          size="sm"
+          onClick={() => setFilter('pending')}
+        >
+          Pending approval ({pending.filter((e) => e.approvalStatus === 'payment_submitted').length})
+        </Button>
+        <Button
+          variant={filter === 'all' ? 'accent' : 'secondary'}
+          size="sm"
+          onClick={() => setFilter('all')}
+        >
+          All events
+        </Button>
+      </PageHeader>
 
       {filter === 'pending' && pending.filter((e) => e.approvalStatus === 'pending_payment').length > 0 && (
-        <Card padding="sm" className="border-gold/40 bg-gold/10">
+        <Card padding="sm" className="border-gold/40 bg-gold/15">
           <p className="text-sm text-muted">
             {pending.filter((e) => e.approvalStatus === 'pending_payment').length} event(s) awaiting
             host payment — not yet submitted for review.
@@ -112,7 +108,7 @@ export function AdminEventList() {
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="font-heading text-xl">{event.name}</h2>
+                    <h2 className="font-heading text-xl md:text-2xl text-dark">{event.name}</h2>
                     <Badge variant={approvalBadgeVariant(event.approvalStatus)}>
                       {APPROVAL_LABELS[event.approvalStatus]}
                     </Badge>
@@ -133,7 +129,11 @@ export function AdminEventList() {
                 <div className="flex flex-col gap-2 shrink-0">
                   {event.approvalStatus === 'payment_submitted' && (
                     <>
-                      <Button size="sm" onClick={() => handleApprove(event.id)}>
+                      <Button
+                        size="sm"
+                        variant="accent"
+                        onClick={() => handleApprove(event.id)}
+                      >
                         Approve (payment confirmed)
                       </Button>
                       {rejectingId === event.id ? (

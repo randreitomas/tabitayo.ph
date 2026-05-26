@@ -14,6 +14,9 @@ export interface EventMenu {
   dessert?: string
 }
 
+/** How the menu is shown to guests — hosts pick one, not both */
+export type MenuDisplayMode = 'text' | 'image'
+
 export interface Event {
   id: string
   hostId: string
@@ -28,7 +31,9 @@ export interface Event {
   rejectedAt?: string
   rejectionReason?: string
   floorPlanUrl?: string
+  menuDisplayMode?: MenuDisplayMode
   menu?: EventMenu
+  menuImageUrl?: string
   spotifyUrl?: string
   photoShareEnabled: boolean
   customBranding?: { primaryColor: string; logoUrl: string }

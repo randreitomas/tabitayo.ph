@@ -10,6 +10,9 @@ export function readImageAsDataUrl(file: File): Promise<string> {
   })
 }
 
-export function isFloorPlanImage(file: File): boolean {
+export function isUploadableImage(file: File): boolean {
   return ['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)
 }
+
+/** @deprecated Use isUploadableImage */
+export const isFloorPlanImage = isUploadableImage

@@ -2,16 +2,22 @@ import { LogoMark } from './LogoMark'
 
 interface LogoFullProps {
   className?: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'sidebar'
   light?: boolean
   horizontal?: boolean
-  variant?: 'default' | 'header'
+  variant?: 'default' | 'header' | 'sidebar'
 }
 
 const sizes = {
   sm: { text: 'text-xl leading-none', mark: 'h-7 w-7' },
   md: { text: 'text-3xl leading-none', mark: 'h-10 w-10' },
   lg: { text: 'text-4xl md:text-5xl leading-none', mark: 'h-12 w-12 md:h-14 md:w-14' },
+  sidebar: { text: 'text-[1.65rem] leading-none', mark: 'h-9 w-9' },
+}
+
+const sidebarVariantSizes = {
+  text: 'text-[1.65rem] leading-none font-heading font-semibold tracking-wide',
+  mark: 'h-9 w-9',
 }
 
 const headerSizes = {
@@ -26,7 +32,21 @@ export function LogoFull({
   horizontal = false,
   variant = 'default',
 }: LogoFullProps) {
-  const s = variant === 'header' ? headerSizes : sizes[size]
+  const s =
+    variant === 'header'
+      ? headerSizes
+      : variant === 'sidebar'
+        ? sidebarVariantSizes
+        : sizes[size]
+
+  if (variant === 'sidebar') {
+    return (
+      <div className={['inline-flex items-center gap-2.5', className].join(' ')}>
+        <LogoMark className={s.mark} />
+        <span className={[s.text, light ? 'text-ivory' : 'text-dark'].join(' ')}>tabitayo</span>
+      </div>
+    )
+  }
 
   if (variant === 'header') {
     return (

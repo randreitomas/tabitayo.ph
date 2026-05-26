@@ -31,6 +31,7 @@ export const MOCK_EVENTS: Event[] = [
     approvedAt: '2026-05-01T10:00:00.000Z',
     floorPlanUrl:
       'https://images.unsplash.com/photo-1519167758481-83f550bb49b8?w=800&q=80',
+    menuDisplayMode: 'text',
     menu: {
       appetizer: 'Ensaladang talong with crispy shallots',
       main: 'Beef caldereta · Grilled salmon · Vegetable lasagna',

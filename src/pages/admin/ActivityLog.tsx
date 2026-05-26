@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 const ACTION_OPTIONS: { value: ActivityLogFilters['action']; label: string }[] = [
   { value: 'all', label: 'All actions' },
@@ -59,13 +60,11 @@ export function ActivityLogPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-3xl">Activity log</h1>
-        <p className="text-sm text-muted mt-1">
-          Platform sign-ins, sign-outs, and event changes across all hosts.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Activity log"
+        description="Platform sign-ins, sign-outs, and event changes across all hosts."
+      />
 
       <Card padding="md">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { User, LoginInput, RegisterInput } from '@/types/user'
 import * as api from '@/lib/api'
+import { isMockToken, USE_MOCK } from '@/lib/api/config'
 
 const TOKEN_KEY = 'tabitayo_token'
 
@@ -11,6 +12,12 @@ export function useAuth() {
   const refresh = useCallback(async () => {
     const token = localStorage.getItem(TOKEN_KEY)
     if (!token) {
+      setUser(null)
+      setLoading(false)
+      return
+    }
+    if (!USE_MOCK && isMockToken(token)) {
+      localStorage.removeItem(TOKEN_KEY)
       setUser(null)
       setLoading(false)
       return

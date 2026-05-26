@@ -74,7 +74,7 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
   let user: User | null = null
   if (input.email === 'admin@tabitayo.ph') {
     user = MOCK_ADMIN
-  } else if (input.email === 'maria@example.com' || input.email.includes('@')) {
+  } else if (input.email === 'maria@example.com') {
     user = MOCK_HOST
   }
   if (!user) throw new Error('Invalid email or password')

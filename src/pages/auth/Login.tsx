@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AuthBackLink } from '@/components/auth/AuthBackLink'
 import { getApiErrorMessage } from '@/lib/api/errors'
+import { USE_MOCK } from '@/lib/api/config'
 
 export function Login() {
   const { login, user } = useAuthContext()
@@ -72,9 +73,11 @@ export function Login() {
             {loading ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
-        <p className="text-xs text-muted text-center mt-6">
-          Demo: maria@example.com or admin@tabitayo.ph (any password)
-        </p>
+        {USE_MOCK && (
+          <p className="text-xs text-muted text-center mt-6">
+            Local demo: maria@example.com or admin@tabitayo.ph (any password)
+          </p>
+        )}
         <p className="text-sm text-center mt-4">
           <Link to="/register" className="underline hover:text-dark">
             Register as host

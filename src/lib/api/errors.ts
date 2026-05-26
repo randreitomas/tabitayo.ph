@@ -12,7 +12,15 @@ export function getApiErrorMessage(err: unknown, fallback = 'Something went wron
   if (axios.isAxiosError<ApiErrorBody>(err)) {
     const msg = err.response?.data?.error?.message
     if (msg) return msg
-    if (err.response?.status === 401) return 'Please sign in again.'
+
+    if (!err.response) {
+      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        return 'Cannot reach the API. If this persists after redeploy, the server may be waking up (try again in ~30s).'
+      }
+      return err.message || fallback
+    }
+
+    if (err.response?.status === 401) return 'Invalid email or password.'
     if (err.response?.status === 403) return 'You do not have permission to do that.'
     if (err.response?.status === 404) return 'Not found.'
   }

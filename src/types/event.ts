@@ -19,6 +19,8 @@ export type MenuDisplayMode = 'text' | 'image'
 
 export interface Event {
   id: string
+  /** Public guest URL segment (`/e/:slug`) */
+  publicSlug?: string
   hostId: string
   name: string
   date: string

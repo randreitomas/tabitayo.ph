@@ -21,6 +21,7 @@ export const MOCK_ADMIN: User = {
 export const MOCK_EVENTS: Event[] = [
   {
     id: 'evt-demo',
+    publicSlug: 'evt-demo',
     hostId: 'host-1',
     name: 'Santos–Reyes Wedding',
     date: '2026-06-14',

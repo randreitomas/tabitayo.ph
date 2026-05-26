@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AuthBackLink } from '@/components/auth/AuthBackLink'
+import { getApiErrorMessage } from '@/lib/api/errors'
 
 export function Login() {
   const { login, user } = useAuthContext()
@@ -34,8 +35,8 @@ export function Login() {
         from ??
         (loggedIn.role === 'admin' ? '/admin/hosts' : '/host/events')
       navigate(dest, { replace: true })
-    } catch {
-      setError('Invalid email or password')
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Invalid email or password'))
     } finally {
       setLoading(false)
     }

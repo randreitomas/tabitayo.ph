@@ -3,52 +3,41 @@ import { generateEventQR, getEventGuestUrl } from '@/lib/qr'
 import { Button } from '@/components/ui/Button'
 
 interface QRDisplayProps {
-  eventId: string
+  publicSlug: string
   eventName: string
 }
 
-export function QRDisplay({ eventId, eventName }: QRDisplayProps) {
+export function QRDisplay({ publicSlug, eventName }: QRDisplayProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null)
-  const guestUrl = getEventGuestUrl(eventId)
+  const guestUrl = getEventGuestUrl(publicSlug)
 
   useEffect(() => {
-    generateEventQR(eventId, { width: 320 }).then(setDataUrl)
-  }, [eventId])
+    generateEventQR(publicSlug, { width: 320 }).then(setDataUrl)
+  }, [publicSlug])
 
   const download = () => {
     if (!dataUrl) return
     const a = document.createElement('a')
     a.href = dataUrl
-    a.download = `tabitayo-qr-${eventId}.png`
+    a.download = `tabitayo-qr-${publicSlug}.png`
     a.click()
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 max-w-sm mx-auto text-center">
-      <p className="text-sm text-muted">
-        Guests scan this code to find their seat at <strong>{eventName}</strong>
-      </p>
+    <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
       {dataUrl ? (
         <img
           src={dataUrl}
           alt={`QR code for ${eventName}`}
-          className="w-64 h-64 border border-border rounded-sm p-2 bg-ivory"
+          className="w-full max-w-[320px] border border-border rounded-sm"
         />
       ) : (
-        <div className="w-64 h-64 border border-border rounded-sm animate-pulse bg-border/30" />
+        <div className="w-[320px] h-[320px] bg-border/30 animate-pulse rounded-sm" />
       )}
-      <p className="text-xs text-muted break-all px-4">{guestUrl}</p>
-      <div className="flex gap-3">
-        <Button onClick={download} disabled={!dataUrl}>
-          Download PNG
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => navigator.clipboard.writeText(guestUrl)}
-        >
-          Copy link
-        </Button>
-      </div>
+      <p className="text-xs text-muted text-center break-all">{guestUrl}</p>
+      <Button variant="secondary" onClick={download} disabled={!dataUrl}>
+        Download QR
+      </Button>
     </div>
   )
 }

@@ -1,5 +1,8 @@
-import axios from 'axios'
+import Papa from 'papaparse'
 import type { Event, CreateEventInput, PhotoShareItem } from '@/types/event'
+import { USE_MOCK } from '@/lib/api/config'
+import * as backend from '@/lib/api/backend'
+import { getApiErrorMessage } from '@/lib/api/errors'
 import type { Guest, CreateGuestInput } from '@/types/guest'
 import type {
   AuthResponse,
@@ -26,21 +29,9 @@ import {
   logoutMessage,
 } from './activityLog'
 import { readImageAsDataUrl, isUploadableImage } from './fileUpload'
+import { isEventGuestLive } from './eventApproval'
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? '/api',
-  headers: { 'Content-Type': 'application/json' },
-})
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('tabitayo_token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
+export { USE_MOCK } from '@/lib/api/config'
 
 // In-memory mock stores
 let events = [...MOCK_EVENTS]
@@ -72,8 +63,11 @@ function appendActivityLog(entry: Omit<ActivityLog, 'id' | 'occurredAt'>): void 
 
 export async function login(input: LoginInput): Promise<AuthResponse> {
   if (!USE_MOCK) {
-    const { data } = await api.post<AuthResponse>('/auth/login', input)
-    return data
+    try {
+      return await backend.backendLogin(input)
+    } catch (err) {
+      throw new Error(getApiErrorMessage(err, 'Invalid email or password'))
+    }
   }
 
   await delay(null)
@@ -96,8 +90,11 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
 
 export async function register(input: RegisterInput): Promise<AuthResponse> {
   if (!USE_MOCK) {
-    const { data } = await api.post<AuthResponse>('/auth/register', input)
-    return data
+    try {
+      return await backend.backendRegister(input)
+    } catch (err) {
+      throw new Error(getApiErrorMessage(err, 'Registration failed'))
+    }
   }
 
   await delay(null)
@@ -122,7 +119,7 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
 
 export async function recordLogout(user: User): Promise<void> {
   if (!USE_MOCK) {
-    await api.post('/admin/activity-logs/logout', { userId: user.id })
+    await backend.backendRecordLogout()
     return
   }
   appendActivityLog(
@@ -135,8 +132,7 @@ export async function getCurrentUser(): Promise<User | null> {
   if (!token) return null
 
   if (!USE_MOCK) {
-    const { data } = await api.get<User>('/auth/me')
-    return data
+    return backend.backendGetCurrentUser()
   }
 
   if (token === 'mock-admin-token') return MOCK_ADMIN
@@ -146,31 +142,63 @@ export async function getCurrentUser(): Promise<User | null> {
 
 // ——— Events (public) ———
 
-export async function getEvent(eventId: string): Promise<Event | null> {
+/** Public guest page — `eventId` route param is the event `public_slug`. */
+export async function getEvent(publicSlug: string): Promise<Event | null> {
   if (!USE_MOCK) {
-    const { data } = await api.get<Event>(`/events/${eventId}`)
-    return data
+    return backend.backendGetPublicEvent(publicSlug)
+  }
+
+  const event =
+    events.find((e) => e.publicSlug === publicSlug || e.id === publicSlug) ?? null
+  return delay(event)
+}
+
+/** Host dashboard — load event by internal UUID. */
+export async function getHostEvent(eventId: string): Promise<Event | null> {
+  if (!USE_MOCK) {
+    return backend.backendGetHostEvent(eventId)
   }
 
   const event = events.find((e) => e.id === eventId) ?? null
   return delay(event)
 }
 
-export async function getEventGuests(eventId: string): Promise<Guest[]> {
+export async function searchPublicGuest(
+  publicSlug: string,
+  name: string
+): Promise<{ event: Event; guest: Guest } | null> {
   if (!USE_MOCK) {
-    const { data } = await api.get<Guest[]>(`/events/${eventId}/guests`)
-    return data
+    return backend.backendSearchPublicGuest(publicSlug, name)
   }
 
-  return delay(guests.filter((g) => g.eventId === eventId))
+  const event =
+    events.find((e) => e.publicSlug === publicSlug || e.id === publicSlug) ?? null
+  if (!event || !isEventGuestLive(event)) return null
+
+  const list = guests.filter((g) => g.eventId === event.id)
+  const q = name.trim().toLowerCase()
+  const match =
+    list.find((g) => g.fullName.toLowerCase() === q) ??
+    list.find((g) => g.fullName.toLowerCase().includes(q)) ??
+    list.find((g) => g.alias?.toLowerCase().includes(q))
+
+  if (!match) return null
+  return delay({ event, guest: match })
+}
+
+export async function getEventGuests(eventId: string): Promise<Guest[]> {
+  if (!USE_MOCK) {
+    return backend.backendGetEventGuests(eventId)
+  }
+
+  const event = events.find((e) => e.id === eventId || e.publicSlug === eventId)
+  if (!event) return delay([])
+  return delay(guests.filter((g) => g.eventId === event.id))
 }
 
 export async function getApprovedPhotos(eventId: string): Promise<PhotoShareItem[]> {
   if (!USE_MOCK) {
-    const { data } = await api.get<PhotoShareItem[]>(
-      `/events/${eventId}/photos?status=approved`
-    )
-    return data
+    return backend.backendGetApprovedPhotos(eventId)
   }
 
   return delay(
@@ -184,15 +212,7 @@ export async function uploadGuestPhoto(
   caption?: string
 ): Promise<PhotoShareItem> {
   if (!USE_MOCK) {
-    const form = new FormData()
-    form.append('file', file)
-    if (caption) form.append('caption', caption)
-    const { data } = await api.post<PhotoShareItem>(
-      `/events/${eventId}/photos`,
-      form,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    )
-    return data
+    return backend.backendUploadGuestPhoto()
   }
 
   const item: PhotoShareItem = {
@@ -211,8 +231,7 @@ export async function uploadGuestPhoto(
 
 export async function getHostEvents(hostId: string): Promise<Event[]> {
   if (!USE_MOCK) {
-    const { data } = await api.get<Event[]>(`/hosts/${hostId}/events`)
-    return data
+    return backend.backendGetHostEvents()
   }
 
   return delay(events.filter((e) => e.hostId === hostId))
@@ -223,12 +242,13 @@ export async function createEvent(
   input: CreateEventInput
 ): Promise<Event> {
   if (!USE_MOCK) {
-    const { data } = await api.post<Event>('/events', { ...input, hostId })
-    return data
+    return backend.backendCreateEvent(input)
   }
 
+  const id = generateId('evt')
   const event: Event = {
-    id: generateId('evt'),
+    id,
+    publicSlug: id,
     hostId,
     ...input,
     status: 'active',
@@ -248,12 +268,9 @@ export async function createEvent(
 
 export async function uploadEventFloorPlan(eventId: string, file: File): Promise<Event> {
   if (!USE_MOCK) {
-    const form = new FormData()
-    form.append('file', file)
-    const { data } = await api.post<Event>(`/events/${eventId}/floor-plan`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    return data
+    if (!isUploadableImage(file)) throw new Error('Invalid file type')
+    const dataUrl = await readImageAsDataUrl(file)
+    return backend.backendUpdateEvent(eventId, { floorPlanUrl: dataUrl })
   }
 
   if (!isUploadableImage(file)) {
@@ -283,12 +300,13 @@ export async function uploadEventFloorPlan(eventId: string, file: File): Promise
 
 export async function uploadEventMenuImage(eventId: string, file: File): Promise<Event> {
   if (!USE_MOCK) {
-    const form = new FormData()
-    form.append('file', file)
-    const { data } = await api.post<Event>(`/events/${eventId}/menu-image`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    if (!isUploadableImage(file)) throw new Error('Invalid file type')
+    const dataUrl = await readImageAsDataUrl(file)
+    return backend.backendUpdateEvent(eventId, {
+      menuDisplayMode: 'image',
+      menuImageUrl: dataUrl,
+      menu: undefined,
     })
-    return data
   }
 
   if (!isUploadableImage(file)) {
@@ -326,8 +344,7 @@ export async function updateEvent(
   patch: Partial<Event>
 ): Promise<Event> {
   if (!USE_MOCK) {
-    const { data } = await api.patch<Event>(`/events/${eventId}`, patch)
-    return data
+    return backend.backendUpdateEvent(eventId, patch)
   }
 
   const idx = events.findIndex((e) => e.id === eventId)
@@ -354,8 +371,7 @@ export async function addGuest(
   input: CreateGuestInput
 ): Promise<Guest> {
   if (!USE_MOCK) {
-    const { data } = await api.post<Guest>(`/events/${eventId}/guests`, input)
-    return data
+    return backend.backendAddGuest(eventId, input)
   }
 
   const guest: Guest = {
@@ -367,16 +383,49 @@ export async function addGuest(
   return delay(guest)
 }
 
+export async function uploadGuestsCsv(eventId: string, file: File): Promise<Guest[]> {
+  if (!USE_MOCK) {
+    return backend.backendUploadGuestsCsv(eventId, file)
+  }
+
+  return new Promise((resolve, reject) => {
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const inputs: CreateGuestInput[] = []
+        for (const row of results.data) {
+          const fullName =
+            row.full_name ?? row.fullName ?? row.name ?? row['Full Name']
+          const tableNumber =
+            row.table_number ?? row.tableNumber ?? row.table ?? row['Table']
+          if (!fullName?.trim() || !tableNumber?.trim()) continue
+          inputs.push({
+            fullName: fullName.trim(),
+            alias: (row.alias ?? row.Alias)?.trim() || undefined,
+            tableNumber: tableNumber.trim(),
+            seatNumber:
+              (row.seat_number ?? row.seatNumber ?? row.seat)?.trim() || undefined,
+          })
+        }
+
+        if (inputs.length === 0) {
+          reject(new Error('No valid rows found.'))
+          return
+        }
+        resolve(await addGuestsBulk(eventId, inputs))
+      },
+      error: () => reject(new Error('Could not parse CSV file.')),
+    })
+  })
+}
+
 export async function addGuestsBulk(
   eventId: string,
   inputs: CreateGuestInput[]
 ): Promise<Guest[]> {
   if (!USE_MOCK) {
-    const { data } = await api.post<Guest[]>(
-      `/events/${eventId}/guests/bulk`,
-      { guests: inputs }
-    )
-    return data
+    throw new Error('Use CSV upload for bulk import with the API.')
   }
 
   const newGuests = inputs.map((input) => ({
@@ -388,9 +437,9 @@ export async function addGuestsBulk(
   return delay(newGuests)
 }
 
-export async function deleteGuest(guestId: string): Promise<void> {
+export async function deleteGuest(eventId: string, guestId: string): Promise<void> {
   if (!USE_MOCK) {
-    await api.delete(`/guests/${guestId}`)
+    await backend.backendDeleteGuest(eventId, guestId)
     return
   }
 
@@ -400,8 +449,7 @@ export async function deleteGuest(guestId: string): Promise<void> {
 
 export async function getEventPhotos(eventId: string): Promise<PhotoShareItem[]> {
   if (!USE_MOCK) {
-    const { data } = await api.get<PhotoShareItem[]>(`/events/${eventId}/photos`)
-    return data
+    return backend.backendGetEventPhotos(eventId)
   }
 
   return delay(photos.filter((p) => p.eventId === eventId))
@@ -412,10 +460,7 @@ export async function updatePhotoStatus(
   status: PhotoShareItem['status']
 ): Promise<PhotoShareItem> {
   if (!USE_MOCK) {
-    const { data } = await api.patch<PhotoShareItem>(`/photos/${photoId}`, {
-      status,
-    })
-    return data
+    return backend.backendUpdatePhotoStatus()
   }
 
   const idx = photos.findIndex((p) => p.id === photoId)
@@ -428,8 +473,7 @@ export async function updatePhotoStatus(
 
 export async function getAllHosts(): Promise<HostAccount[]> {
   if (!USE_MOCK) {
-    const { data } = await api.get<HostAccount[]>('/admin/hosts')
-    return data
+    return backend.backendGetAdminUsers()
   }
 
   return delay([...hosts])
@@ -440,10 +484,7 @@ export async function updateHostStatus(
   status: HostAccount['status']
 ): Promise<HostAccount> {
   if (!USE_MOCK) {
-    const { data } = await api.patch<HostAccount>(`/admin/hosts/${hostId}`, {
-      status,
-    })
-    return data
+    return backend.backendUpdateHostStatus(hostId, status)
   }
 
   const idx = hosts.findIndex((h) => h.id === hostId)
@@ -454,8 +495,7 @@ export async function updateHostStatus(
 
 export async function submitEventPayment(eventId: string): Promise<Event> {
   if (!USE_MOCK) {
-    const { data } = await api.post<Event>(`/events/${eventId}/submit-payment`)
-    return data
+    return backend.backendSubmitEventPayment(eventId)
   }
 
   const idx = events.findIndex((e) => e.id === eventId)
@@ -485,8 +525,7 @@ export async function submitEventPayment(eventId: string): Promise<Event> {
 
 export async function approveEvent(eventId: string): Promise<Event> {
   if (!USE_MOCK) {
-    const { data } = await api.post<Event>(`/admin/events/${eventId}/approve`)
-    return data
+    return backend.backendApproveEvent(eventId)
   }
 
   const idx = events.findIndex((e) => e.id === eventId)
@@ -517,8 +556,7 @@ export async function approveEvent(eventId: string): Promise<Event> {
 
 export async function rejectEvent(eventId: string, reason?: string): Promise<Event> {
   if (!USE_MOCK) {
-    const { data } = await api.post<Event>(`/admin/events/${eventId}/reject`, { reason })
-    return data
+    return backend.backendRejectEvent(eventId, reason)
   }
 
   const idx = events.findIndex((e) => e.id === eventId)
@@ -548,8 +586,7 @@ export async function rejectEvent(eventId: string, reason?: string): Promise<Eve
 
 export async function getAllEvents(): Promise<Event[]> {
   if (!USE_MOCK) {
-    const { data } = await api.get<Event[]>('/admin/events')
-    return data
+    return backend.backendGetAdminEvents()
   }
 
   return delay([...events])
@@ -559,10 +596,7 @@ export async function getActivityLogs(
   filters: ActivityLogFilters = {}
 ): Promise<ActivityLog[]> {
   if (!USE_MOCK) {
-    const { data } = await api.get<ActivityLog[]>('/admin/activity-logs', {
-      params: filters,
-    })
-    return data
+    return backend.backendGetActivityLogs(filters)
   }
 
   let result = [...activityLogs]
@@ -585,4 +619,3 @@ export async function getActivityLogs(
   return delay(result)
 }
 
-export default api

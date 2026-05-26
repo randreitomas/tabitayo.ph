@@ -183,7 +183,11 @@ export function AdminEventList() {
                           Mark ended
                         </Button>
                       )}
-                      <a href={`/e/${event.id}`} target="_blank" rel="noreferrer">
+                      <a
+                        href={`/e/${event.publicSlug ?? event.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         <Button size="sm" variant="ghost">
                           Guest page
                         </Button>

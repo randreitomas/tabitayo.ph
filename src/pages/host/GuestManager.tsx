@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGuests } from '@/hooks/useGuests'
-import { addGuest, addGuestsBulk, deleteGuest } from '@/lib/api'
+import { addGuest, uploadGuestsCsv, deleteGuest } from '@/lib/api'
 import type { CreateGuestInput } from '@/types/guest'
 import { GuestTable } from '@/components/host/GuestTable'
 import { GuestUpload } from '@/components/host/GuestUpload'
@@ -34,13 +34,13 @@ export function GuestManager({ eventId }: GuestManagerProps) {
     refresh()
   }
 
-  const handleBulk = async (inputs: CreateGuestInput[]) => {
-    await addGuestsBulk(eventId, inputs)
+  const handleCsv = async (file: File) => {
+    await uploadGuestsCsv(eventId, file)
     refresh()
   }
 
   const handleDelete = async (guestId: string) => {
-    await deleteGuest(guestId)
+    await deleteGuest(eventId, guestId)
     refresh()
   }
 
@@ -54,7 +54,7 @@ export function GuestManager({ eventId }: GuestManagerProps) {
 
       <div>
         <h3 className="font-heading text-lg mb-3">Import from CSV</h3>
-        <GuestUpload onUpload={handleBulk} />
+        <GuestUpload onUploadCsv={handleCsv} />
       </div>
 
       <Modal

@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvent'
 import { useGuests } from '@/hooks/useGuests'
+import { USE_MOCK } from '@/lib/api/config'
 import type { Guest } from '@/types/guest'
 import { NameSearch } from '@/components/guest/NameSearch'
+import { PublicNameSearch } from '@/components/guest/PublicNameSearch'
 import { TableBrowse } from '@/components/guest/TableBrowse'
 import { SeatResult } from '@/components/guest/SeatResult'
 import { EventDetails } from '@/components/guest/EventDetails'
@@ -11,9 +13,9 @@ import { LogoFull } from '@/components/logo/LogoFull'
 import { isEventGuestLive } from '@/lib/eventApproval'
 
 export function EventPage() {
-  const { eventId } = useParams<{ eventId: string }>()
-  const { event, loading, error } = useEvent(eventId)
-  const { guests, loading: guestsLoading } = useGuests(eventId)
+  const { eventId: publicSlug } = useParams<{ eventId: string }>()
+  const { event, loading, error } = useEvent(publicSlug, 'public')
+  const { guests, loading: guestsLoading } = useGuests(USE_MOCK ? publicSlug : undefined)
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null)
   const [browseByTable, setBrowseByTable] = useState(false)
 
@@ -72,25 +74,33 @@ export function EventPage() {
 
       <section>
         <h2 className="font-heading text-xl text-center mb-4">Find your seat</h2>
-        {!guestsLoading && (
-          <NameSearch guests={guests} onSelect={setSelectedGuest} />
+        {USE_MOCK ? (
+          !guestsLoading && (
+            <NameSearch guests={guests} onSelect={setSelectedGuest} />
+          )
+        ) : (
+          publicSlug && <PublicNameSearch publicSlug={publicSlug} onSelect={setSelectedGuest} />
         )}
       </section>
 
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-border" />
-        <button
-          type="button"
-          onClick={() => setBrowseByTable((v) => !v)}
-          className="text-xs text-muted hover:text-dark underline-offset-2 hover:underline"
-        >
-          {browseByTable ? 'Hide table list' : 'Browse by Table'}
-        </button>
-        <div className="flex-1 h-px bg-border" />
-      </div>
+      {USE_MOCK && (
+        <>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <button
+              type="button"
+              onClick={() => setBrowseByTable((v) => !v)}
+              className="text-xs text-muted hover:text-dark underline-offset-2 hover:underline"
+            >
+              {browseByTable ? 'Hide table list' : 'Browse by Table'}
+            </button>
+            <div className="flex-1 h-px bg-border" />
+          </div>
 
-      {browseByTable && !guestsLoading && (
-        <TableBrowse guests={guests} onSelect={setSelectedGuest} />
+          {browseByTable && !guestsLoading && (
+            <TableBrowse guests={guests} onSelect={setSelectedGuest} />
+          )}
+        </>
       )}
 
       {selectedGuest && (

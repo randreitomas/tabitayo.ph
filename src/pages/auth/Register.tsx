@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AuthBackLink } from '@/components/auth/AuthBackLink'
+import { getApiErrorMessage } from '@/lib/api/errors'
 
 export function Register() {
   const { register } = useAuthContext()
@@ -24,8 +25,8 @@ export function Register() {
     try {
       await register({ email, password, displayName })
       navigate('/host/events', { replace: true })
-    } catch {
-      setError('Registration failed. Please try again.')
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Registration failed. Please try again.'))
     } finally {
       setLoading(false)
     }
@@ -62,7 +63,8 @@ export function Register() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={6}
+            minLength={8}
+            hint="At least 8 characters (required by the API)"
           />
           {error && <p className="text-xs text-red-600 text-center">{error}</p>}
           <Button type="submit" fullWidth disabled={loading}>

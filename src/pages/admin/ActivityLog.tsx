@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getActivityLogs } from '@/lib/api'
+import { USE_MOCK } from '@/lib/api/config'
 import type { ActivityLog, ActivityLogFilters } from '@/types/activityLog'
 import { ACTIVITY_ACTION_LABELS } from '@/types/activityLog'
 import { ACTION_BADGE_VARIANT } from '@/lib/activityLog'
@@ -63,7 +64,11 @@ export function ActivityLogPage() {
     <div className="space-y-8">
       <PageHeader
         title="Activity log"
-        description="Platform sign-ins, sign-outs, and event changes across all hosts."
+        description={
+          USE_MOCK
+            ? 'Platform sign-ins, sign-outs, and event changes across all hosts.'
+            : 'Activity logging is not exposed on the API yet. Entries appear here in mock mode only.'
+        }
       />
 
       <Card padding="md">

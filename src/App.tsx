@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { ApiModeBanner } from '@/components/dev/ApiModeBanner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { GuestLayout } from '@/layouts/GuestLayout'
@@ -46,6 +47,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ApiModeBanner />
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/business" element={<BusinessPage />} />

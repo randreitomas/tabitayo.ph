@@ -1,4 +1,5 @@
 import type { Event } from '@/types/event'
+import { USE_MOCK } from '@/lib/api/config'
 import { hasMenuForGuests, inferMenuDisplayMode } from '@/lib/menu'
 import { FloorPlan } from '@/components/guest/FloorPlan'
 import { MenuDisplay } from '@/components/guest/MenuDisplay'
@@ -13,7 +14,7 @@ export function EventDetails({ event }: EventDetailsProps) {
   const showMenu = hasMenuForGuests(event)
   const menuMode = inferMenuDisplayMode(event)
   const showPlaylist = Boolean(event.spotifyUrl?.trim())
-  const showPhotos = event.photoShareEnabled
+  const showPhotos = USE_MOCK && event.photoShareEnabled
 
   const hasContent = showFloorPlan || showMenu || showPlaylist || showPhotos
 

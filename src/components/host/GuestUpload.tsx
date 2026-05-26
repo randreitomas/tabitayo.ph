@@ -1,30 +1,12 @@
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import Papa from 'papaparse'
-import type { CreateGuestInput } from '@/types/guest'
 import { Button } from '@/components/ui/Button'
 
 interface GuestUploadProps {
-  onUpload: (guests: CreateGuestInput[]) => Promise<void>
+  onUploadCsv: (file: File) => Promise<void>
 }
 
-function parseRow(row: Record<string, string>): CreateGuestInput | null {
-  const fullName =
-    row.fullName ?? row.fullname ?? row.name ?? row['Full Name'] ?? row['full name']
-  const tableNumber =
-    row.tableNumber ?? row.table ?? row['Table'] ?? row['table number'] ?? row['Table Number']
-  if (!fullName?.trim() || !tableNumber?.trim()) return null
-
-  return {
-    fullName: fullName.trim(),
-    alias: (row.alias ?? row.Alias ?? row.nickname)?.trim() || undefined,
-    tableNumber: tableNumber.trim(),
-    seatNumber:
-      (row.seatNumber ?? row.seat ?? row.Seat ?? row['Seat Number'])?.trim() || undefined,
-  }
-}
-
-export function GuestUpload({ onUpload }: GuestUploadProps) {
+export function GuestUpload({ onUploadCsv }: GuestUploadProps) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -34,42 +16,22 @@ export function GuestUpload({ onUpload }: GuestUploadProps) {
       if (!file) return
       setError(null)
       setLoading(true)
-
-      Papa.parse<Record<string, string>>(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          const guests = results.data
-            .map(parseRow)
-            .filter((g): g is CreateGuestInput => g !== null)
-
-          if (guests.length === 0) {
-            setError('No valid rows found. CSV needs fullName and tableNumber columns.')
-            setLoading(false)
-            return
-          }
-
-          try {
-            await onUpload(guests)
-          } catch {
-            setError('Upload failed.')
-          } finally {
-            setLoading(false)
-          }
-        },
-        error: () => {
-          setError('Could not parse CSV file.')
-          setLoading(false)
-        },
-      })
+      try {
+        await onUploadCsv(file)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Upload failed.')
+      } finally {
+        setLoading(false)
+      }
     },
-    [onUpload]
+    [onUploadCsv]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'text/csv': ['.csv'] },
     maxFiles: 1,
+    maxSize: 1024 * 1024,
     disabled: loading,
   })
 
@@ -88,7 +50,9 @@ export function GuestUpload({ onUpload }: GuestUploadProps) {
           {loading ? 'Importing...' : 'Drop CSV here or click to browse'}
         </p>
         <p className="text-xs text-muted mt-2">
-          Columns: fullName, tableNumber, alias (optional), seatNumber (optional)
+          Required columns: <span className="font-mono">full_name</span>,{' '}
+          <span className="font-mono">table_number</span> · optional: alias, seat_number · max 1
+          MB
         </p>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -97,7 +61,7 @@ export function GuestUpload({ onUpload }: GuestUploadProps) {
         size="sm"
         onClick={() => {
           const sample =
-            'fullName,alias,tableNumber,seatNumber\nJuan Dela Cruz,Johnny,12,3\nMaria Santos,Claire,5,1'
+            'full_name,alias,table_number,seat_number\nJuan Dela Cruz,Johnny,Table 1,4\nMaria Santos,,Table 2,'
           const blob = new Blob([sample], { type: 'text/csv' })
           const url = URL.createObjectURL(blob)
           const a = document.createElement('a')

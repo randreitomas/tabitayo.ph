@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Event } from '@/types/event'
 import * as api from '@/lib/api'
 
-export function useEvent(eventId: string | undefined) {
+export function useEvent(eventId: string | undefined, scope: 'public' | 'host' = 'public') {
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -16,7 +16,10 @@ export function useEvent(eventId: string | undefined) {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.getEvent(eventId)
+      const data =
+        scope === 'host'
+          ? await api.getHostEvent(eventId)
+          : await api.getEvent(eventId)
       if (!data) setError('Event not found')
       setEvent(data)
     } catch {
@@ -25,7 +28,7 @@ export function useEvent(eventId: string | undefined) {
     } finally {
       setLoading(false)
     }
-  }, [eventId])
+  }, [eventId, scope])
 
   useEffect(() => {
     refresh()

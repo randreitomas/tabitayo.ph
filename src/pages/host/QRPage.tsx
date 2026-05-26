@@ -4,7 +4,7 @@ import { QRDisplay } from '@/components/host/QRDisplay'
 
 export function QRPage() {
   const { id } = useParams<{ id: string }>()
-  const { event, loading } = useEvent(id)
+  const { event, loading } = useEvent(id, 'host')
 
   if (loading) return <p className="text-muted">Loading...</p>
   if (!event) return <p className="text-muted">Event not found</p>
@@ -15,7 +15,10 @@ export function QRPage() {
         ← Back to event
       </Link>
       <h1 className="font-heading text-3xl">QR Code</h1>
-      <QRDisplay eventId={event.id} eventName={event.name} />
+      <QRDisplay
+        publicSlug={event.publicSlug ?? event.id}
+        eventName={event.name}
+      />
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvent'
 import { updateEvent, getEventPhotos, updatePhotoStatus } from '@/lib/api'
+import { USE_MOCK } from '@/lib/api/config'
 import type { PhotoShareItem } from '@/types/event'
 import { Tabs, type TabItem } from '@/components/ui/Tabs'
 import { Badge } from '@/components/ui/Badge'
@@ -16,7 +17,7 @@ import { APPROVAL_LABELS, approvalBadgeVariant, canHostPublishQr } from '@/lib/e
 
 export function EventDetail() {
   const { id } = useParams<{ id: string }>()
-  const { event, loading, setEvent } = useEvent(id)
+  const { event, loading, setEvent } = useEvent(id, 'host')
   const [activeTab, setActiveTab] = useState('guests')
   const [photos, setPhotos] = useState<PhotoShareItem[]>([])
   const [spotifyDraft, setSpotifyDraft] = useState('')
@@ -79,7 +80,12 @@ export function EventDetail() {
       label: 'Photo Share',
       content: (
         <div className="space-y-4">
-          {!event.photoShareEnabled ? (
+          {!USE_MOCK ? (
+            <p className="text-muted text-sm">
+              Photo share moderation is not available via the API yet. Use mock mode or wait for a
+              future release.
+            </p>
+          ) : !event.photoShareEnabled ? (
             <p className="text-muted text-sm">Photo share is disabled for this event.</p>
           ) : photos.filter((p) => p.status === 'pending').length === 0 ? (
             <p className="text-muted text-sm">No photos pending approval.</p>
@@ -127,7 +133,10 @@ export function EventDetail() {
       id: 'qr',
       label: 'QR Code',
       content: canHostPublishQr(event) ? (
-        <QRDisplay eventId={event.id} eventName={event.name} />
+        <QRDisplay
+          publicSlug={event.publicSlug ?? event.id}
+          eventName={event.name}
+        />
       ) : (
         <p className="text-sm text-muted text-center py-8">
           QR code will be available after your event is approved.
@@ -169,7 +178,11 @@ export function EventDetail() {
             </Button>
           )}
           {canHostPublishQr(event) && (
-            <Link to={`/e/${event.id}`} target="_blank" rel="noreferrer">
+            <Link
+              to={`/e/${event.publicSlug ?? event.id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
               <Button variant="ghost" size="sm">
                 Preview guest page
               </Button>

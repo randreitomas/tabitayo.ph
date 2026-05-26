@@ -13,6 +13,7 @@ import { QRPage } from '@/pages/host/QRPage'
 import { HostList } from '@/pages/admin/HostList'
 import { AdminEventList } from '@/pages/admin/EventList'
 import { LandingPage } from '@/pages/landing/LandingPage'
+import { BusinessPage } from '@/pages/landing/BusinessPage'
 
 function HostRoutes() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/business" element={<BusinessPage />} />
 
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

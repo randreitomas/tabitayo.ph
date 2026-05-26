@@ -1,10 +1,12 @@
-import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, type ReactNode } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { LandingHeader } from '@/components/landing/LandingHeader'
 import { LogoFull } from '@/components/logo/LogoFull'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { PricingTable } from '@/components/landing/PricingTable'
+import { BusinessTeaser } from '@/components/landing/BusinessTeaser'
+import { MarketingFooter } from '@/components/landing/MarketingFooter'
 
 function Section({
   id,
@@ -51,6 +53,17 @@ const FAQS = [
 ]
 
 export function LandingPage() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const hash = location.hash.replace('#', '')
+    if (!hash) return
+    const timer = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [location.hash])
+
   return (
     <div className="min-h-dvh bg-ivory">
       <LandingHeader />
@@ -94,6 +107,8 @@ export function LandingPage() {
         </div>
       </section>
 
+      <BusinessTeaser />
+
       {/* Feedback */}
       <Section id="feedback">
         <p className="text-xs uppercase tracking-widest text-muted text-center mb-3">Feedback</p>
@@ -134,93 +149,86 @@ export function LandingPage() {
         </div>
       </Section>
 
-      {/* How it works — Guest */}
-      <Section id="how-it-works-guest" alt>
+      {/* How it works */}
+      <Section id="how-it-works" alt>
         <p className="text-xs uppercase tracking-widest text-muted text-center mb-3">
-          For guests
+          How it works
         </p>
         <h2 className="font-heading text-3xl md:text-4xl text-center mb-10">
-          How it works for your guests
+          Simple for guests, easy for hosts
         </h2>
-        <ol className="space-y-8 max-w-2xl mx-auto">
-          {[
-            {
-              step: '1',
-              title: 'Scan the QR',
-              body: 'Place QR codes at the entrance or on table cards. Guests open the event page instantly.',
-            },
-            {
-              step: '2',
-              title: 'Search their name',
-              body: 'Fuzzy matching handles nicknames, “Ma.”, hyphenated surnames, and aliases.',
-            },
-            {
-              step: '3',
-              title: 'See table & seat',
-              body: 'A clear card shows table number, seat, floor plan, menu, and playlist — all in one view.',
-            },
-          ].map((item) => (
-            <li key={item.step} className="flex gap-5">
-              <span className="shrink-0 w-10 h-10 rounded-full border border-dusty-rose/60 bg-dusty-rose/20 flex items-center justify-center font-heading text-lg">
-                {item.step}
-              </span>
-              <div>
-                <h3 className="font-heading text-xl mb-1">{item.title}</h3>
-                <p className="text-sm text-muted">{item.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <div className="text-center mt-10">
-          <Link to="/e/evt-demo">
-            <Button variant="secondary">Open guest demo</Button>
-          </Link>
+        <div className="grid md:grid-cols-2 gap-10 md:gap-12 max-w-4xl mx-auto">
+          <div>
+            <h3 className="font-heading text-2xl text-center mb-6 text-dusty-rose">For guests</h3>
+            <ol className="space-y-6">
+              {[
+                {
+                  step: '1',
+                  title: 'Scan the QR',
+                  body: 'Open the event page from a QR at the entrance or on table cards.',
+                },
+                {
+                  step: '2',
+                  title: 'Search their name',
+                  body: 'Fuzzy matching handles nicknames, “Ma.”, hyphenated surnames, and aliases.',
+                },
+                {
+                  step: '3',
+                  title: 'See table & seat',
+                  body: 'Table, seat, floor plan, menu, and playlist — all on one page.',
+                },
+              ].map((item) => (
+                <li key={item.step} className="flex gap-4">
+                  <span className="shrink-0 w-9 h-9 rounded-full border border-dusty-rose/60 bg-dusty-rose/20 flex items-center justify-center font-heading text-base">
+                    {item.step}
+                  </span>
+                  <div>
+                    <h4 className="font-heading text-lg mb-0.5">{item.title}</h4>
+                    <p className="text-sm text-muted">{item.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div>
+            <h3 className="font-heading text-2xl text-center mb-6 text-sage">For hosts</h3>
+            <ol className="space-y-6">
+              {[
+                {
+                  step: '1',
+                  title: 'Create your event',
+                  body: 'Set the name, date, venue, and tier. Toggle photo share for premium events.',
+                },
+                {
+                  step: '2',
+                  title: 'Import your guest list',
+                  body: 'Add guests manually or upload a CSV with names, tables, and seats.',
+                },
+                {
+                  step: '3',
+                  title: 'Share the QR & relax',
+                  body: 'Download your QR, add floor plan and menu, approve photos — done.',
+                },
+              ].map((item) => (
+                <li key={item.step} className="flex gap-4">
+                  <span className="shrink-0 w-9 h-9 rounded-full border border-sage/60 bg-sage/25 flex items-center justify-center font-heading text-base">
+                    {item.step}
+                  </span>
+                  <div>
+                    <h4 className="font-heading text-lg mb-0.5">{item.title}</h4>
+                    <p className="text-sm text-muted">{item.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
         </div>
-      </Section>
-
-      {/* How it works — Host */}
-      <Section id="how-it-works-host">
-        <p className="text-xs uppercase tracking-widest text-muted text-center mb-3">
-          For hosts
-        </p>
-        <h2 className="font-heading text-3xl md:text-4xl text-center mb-10">
-          How it works for you
-        </h2>
-        <ol className="space-y-8 max-w-2xl mx-auto">
-          {[
-            {
-              step: '1',
-              title: 'Create your event',
-              body: 'Set the name, date, venue, and tier. Toggle photo share for premium celebrations.',
-            },
-            {
-              step: '2',
-              title: 'Import your guest list',
-              body: 'Add guests manually or upload a CSV with names, tables, and optional seats.',
-            },
-            {
-              step: '3',
-              title: 'Share the QR & relax',
-              body: 'Download your event QR, add floor plan and menu, approve photos — you are set.',
-            },
-          ].map((item) => (
-            <li key={item.step} className="flex gap-5">
-              <span className="shrink-0 w-10 h-10 rounded-full border border-sage/60 bg-sage/25 flex items-center justify-center font-heading text-lg">
-                {item.step}
-              </span>
-              <div>
-                <h3 className="font-heading text-xl mb-1">{item.title}</h3>
-                <p className="text-sm text-muted">{item.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
         <div className="text-center mt-10 flex flex-wrap justify-center gap-3">
+          <Link to="/e/evt-demo">
+            <Button variant="secondary">Try guest demo</Button>
+          </Link>
           <Link to="/register">
             <Button>Create free event</Button>
-          </Link>
-          <Link to="/login">
-            <Button variant="ghost">Host sign in</Button>
           </Link>
         </div>
       </Section>
@@ -260,21 +268,7 @@ export function LandingPage() {
         </div>
       </Section>
 
-      <footer className="border-t border-border py-10 px-4 text-center">
-        <LogoFull size="sm" className="mb-4 opacity-80" />
-        <p className="text-xs text-muted max-w-md mx-auto">
-          © {new Date().getFullYear()} Tabitayo. Data privacy aligned with the Philippine Data
-          Privacy Act (PDPA).
-        </p>
-        <div className="flex justify-center gap-4 mt-4 text-xs">
-          <Link to="/login" className="text-muted hover:text-dark underline">
-            Sign in
-          </Link>
-          <Link to="/register" className="text-muted hover:text-dark underline">
-            Register
-          </Link>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }

@@ -12,6 +12,7 @@ import { EventDetail } from '@/pages/host/EventDetail'
 import { QRPage } from '@/pages/host/QRPage'
 import { HostList } from '@/pages/admin/HostList'
 import { AdminEventList } from '@/pages/admin/EventList'
+import { ActivityLogPage } from '@/pages/admin/ActivityLog'
 import { LandingPage } from '@/pages/landing/LandingPage'
 import { BusinessPage } from '@/pages/landing/BusinessPage'
 
@@ -35,6 +36,7 @@ function AdminRoutes() {
       navItems={[
         { to: '/admin/hosts', label: 'Hosts', end: true },
         { to: '/admin/events', label: 'Events' },
+        { to: '/admin/activity', label: 'Activity log' },
       ]}
     />
   )
@@ -82,6 +84,7 @@ export default function App() {
             <Route index element={<Navigate to="/admin/hosts" replace />} />
             <Route path="hosts" element={<HostList />} />
             <Route path="events" element={<AdminEventList />} />
+            <Route path="activity" element={<ActivityLogPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

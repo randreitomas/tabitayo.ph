@@ -44,7 +44,14 @@ export function useAuth() {
     return registered
   }
 
-  const logout = () => {
+  const logout = async () => {
+    if (user) {
+      try {
+        await api.recordLogout(user)
+      } catch {
+        /* still sign out locally */
+      }
+    }
     localStorage.removeItem(TOKEN_KEY)
     setUser(null)
   }

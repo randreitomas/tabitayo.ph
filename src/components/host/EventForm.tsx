@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { CreateEventInput, EventTier } from '@/types/event'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { formatTierPrice } from '@/lib/eventApproval'
 
 interface EventFormProps {
   onSubmit: (data: CreateEventInput) => Promise<void>
@@ -9,9 +10,9 @@ interface EventFormProps {
 }
 
 const TIERS: { value: EventTier; label: string; desc: string }[] = [
-  { value: 'free', label: 'Free', desc: 'Name search & table browse' },
-  { value: 'standard', label: 'Standard', desc: 'Floor plan, menu, playlist' },
-  { value: 'premium', label: 'Premium', desc: 'Photo share gallery + all features' },
+  { value: 'free', label: 'Free', desc: 'Name search & table browse · ₱0' },
+  { value: 'standard', label: 'Standard', desc: 'Floor plan, menu, playlist · ₱799' },
+  { value: 'premium', label: 'Premium', desc: 'Photo share gallery + all features · ₱1,999' },
 ]
 
 export function EventForm({ onSubmit, loading }: EventFormProps) {
@@ -78,6 +79,11 @@ export function EventForm({ onSubmit, loading }: EventFormProps) {
         />
         <span className="text-sm">Enable photo share gallery</span>
       </label>
+
+      <p className="text-xs text-muted leading-relaxed border border-border rounded-sm p-3 bg-border/20">
+        After you create this event, pay manually via GCash or bank transfer ({formatTierPrice(tier)}).
+        Tabitayo will review your payment and approve your event before the guest page goes live.
+      </p>
 
       <Button type="submit" disabled={loading}>
         {loading ? 'Creating...' : 'Create event'}

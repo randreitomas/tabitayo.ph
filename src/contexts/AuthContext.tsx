@@ -7,7 +7,7 @@ interface AuthContextValue {
   loading: boolean
   login: (input: LoginInput) => Promise<User>
   register: (input: RegisterInput) => Promise<User>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)

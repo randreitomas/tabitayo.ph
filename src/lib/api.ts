@@ -8,14 +8,24 @@ import type {
   RegisterInput,
   User,
 } from '@/types/user'
+import type { ActivityLog, ActivityLogFilters } from '@/types/activityLog'
 import {
   MOCK_ADMIN,
+  MOCK_ACTIVITY_LOGS,
   MOCK_EVENTS,
   MOCK_GUESTS,
   MOCK_HOST,
   MOCK_HOSTS,
   MOCK_PHOTOS,
 } from './mockData'
+import {
+  addEventMessage,
+  buildLogFromUser,
+  configureEventMessage,
+  loginMessage,
+  logoutMessage,
+} from './activityLog'
+import { readImageAsDataUrl, isFloorPlanImage } from './fileUpload'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
@@ -37,6 +47,7 @@ let events = [...MOCK_EVENTS]
 let guests = [...MOCK_GUESTS]
 let photos = [...MOCK_PHOTOS]
 let hosts = [...MOCK_HOSTS]
+let activityLogs = [...MOCK_ACTIVITY_LOGS]
 
 function delay<T>(data: T, ms = 300): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms))
@@ -44,6 +55,17 @@ function delay<T>(data: T, ms = 300): Promise<T> {
 
 function generateId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}`
+}
+
+function appendActivityLog(entry: Omit<ActivityLog, 'id' | 'occurredAt'>): void {
+  activityLogs = [
+    {
+      ...entry,
+      id: generateId('log'),
+      occurredAt: new Date().toISOString(),
+    },
+    ...activityLogs,
+  ]
 }
 
 // ——— Auth ———
@@ -55,13 +77,21 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
   }
 
   await delay(null)
+  let user: User | null = null
   if (input.email === 'admin@tabitayo.ph') {
-    return { token: 'mock-admin-token', user: MOCK_ADMIN }
+    user = MOCK_ADMIN
+  } else if (input.email === 'maria@example.com' || input.email.includes('@')) {
+    user = MOCK_HOST
   }
-  if (input.email === 'maria@example.com' || input.email.includes('@')) {
-    return { token: 'mock-host-token', user: MOCK_HOST }
-  }
-  throw new Error('Invalid email or password')
+  if (!user) throw new Error('Invalid email or password')
+
+  appendActivityLog(
+    buildLogFromUser(user, 'login', loginMessage(user))
+  )
+
+  const token =
+    user.role === 'admin' ? 'mock-admin-token' : 'mock-host-token'
+  return { token, user }
 }
 
 export async function register(input: RegisterInput): Promise<AuthResponse> {
@@ -88,6 +118,16 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
     },
   ]
   return { token: 'mock-host-token', user }
+}
+
+export async function recordLogout(user: User): Promise<void> {
+  if (!USE_MOCK) {
+    await api.post('/admin/activity-logs/logout', { userId: user.id })
+    return
+  }
+  appendActivityLog(
+    buildLogFromUser(user, 'logout', logoutMessage(user))
+  )
 }
 
 export async function getCurrentUser(): Promise<User | null> {
@@ -192,9 +232,53 @@ export async function createEvent(
     hostId,
     ...input,
     status: 'active',
+    approvalStatus: 'pending_payment',
   }
   events = [...events, event]
+
+  const actor = await getCurrentUser()
+  if (actor) {
+    appendActivityLog(
+      buildLogFromUser(actor, 'add_event', addEventMessage(actor, event.name), event)
+    )
+  }
+
   return delay(event)
+}
+
+export async function uploadEventFloorPlan(eventId: string, file: File): Promise<Event> {
+  if (!USE_MOCK) {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await api.post<Event>(`/events/${eventId}/floor-plan`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  }
+
+  if (!isFloorPlanImage(file)) {
+    throw new Error('Invalid file type')
+  }
+
+  const dataUrl = await readImageAsDataUrl(file)
+  const idx = events.findIndex((e) => e.id === eventId)
+  if (idx === -1) throw new Error('Event not found')
+
+  events[idx] = { ...events[idx], floorPlanUrl: dataUrl }
+
+  const actor = await getCurrentUser()
+  if (actor) {
+    appendActivityLog(
+      buildLogFromUser(
+        actor,
+        'configure_event',
+        `${actor.displayName} uploaded floor plan for ${events[idx].name}`,
+        events[idx]
+      )
+    )
+  }
+
+  return delay(events[idx])
 }
 
 export async function updateEvent(
@@ -209,6 +293,19 @@ export async function updateEvent(
   const idx = events.findIndex((e) => e.id === eventId)
   if (idx === -1) throw new Error('Event not found')
   events[idx] = { ...events[idx], ...patch }
+
+  const actor = await getCurrentUser()
+  if (actor && Object.keys(patch).length > 0) {
+    appendActivityLog(
+      buildLogFromUser(
+        actor,
+        'configure_event',
+        configureEventMessage(actor, events[idx].name, patch),
+        events[idx]
+      )
+    )
+  }
+
   return delay(events[idx])
 }
 
@@ -315,6 +412,100 @@ export async function updateHostStatus(
   return delay(hosts[idx])
 }
 
+export async function submitEventPayment(eventId: string): Promise<Event> {
+  if (!USE_MOCK) {
+    const { data } = await api.post<Event>(`/events/${eventId}/submit-payment`)
+    return data
+  }
+
+  const idx = events.findIndex((e) => e.id === eventId)
+  if (idx === -1) throw new Error('Event not found')
+  if (events[idx].approvalStatus === 'approved') return delay(events[idx])
+
+  events[idx] = {
+    ...events[idx],
+    approvalStatus: 'payment_submitted',
+    paymentSubmittedAt: new Date().toISOString(),
+  }
+
+  const actor = await getCurrentUser()
+  if (actor) {
+    appendActivityLog(
+      buildLogFromUser(
+        actor,
+        'configure_event',
+        `${actor.displayName} marked payment submitted for ${events[idx].name}`,
+        events[idx]
+      )
+    )
+  }
+
+  return delay(events[idx])
+}
+
+export async function approveEvent(eventId: string): Promise<Event> {
+  if (!USE_MOCK) {
+    const { data } = await api.post<Event>(`/admin/events/${eventId}/approve`)
+    return data
+  }
+
+  const idx = events.findIndex((e) => e.id === eventId)
+  if (idx === -1) throw new Error('Event not found')
+
+  events[idx] = {
+    ...events[idx],
+    approvalStatus: 'approved',
+    approvedAt: new Date().toISOString(),
+    rejectionReason: undefined,
+    rejectedAt: undefined,
+  }
+
+  const actor = await getCurrentUser()
+  if (actor) {
+    appendActivityLog(
+      buildLogFromUser(
+        actor,
+        'configure_event',
+        `${actor.displayName} approved event ${events[idx].name} (payment confirmed)`,
+        events[idx]
+      )
+    )
+  }
+
+  return delay(events[idx])
+}
+
+export async function rejectEvent(eventId: string, reason?: string): Promise<Event> {
+  if (!USE_MOCK) {
+    const { data } = await api.post<Event>(`/admin/events/${eventId}/reject`, { reason })
+    return data
+  }
+
+  const idx = events.findIndex((e) => e.id === eventId)
+  if (idx === -1) throw new Error('Event not found')
+
+  events[idx] = {
+    ...events[idx],
+    approvalStatus: 'rejected',
+    rejectedAt: new Date().toISOString(),
+    rejectionReason: reason?.trim() || 'Payment could not be verified',
+  }
+
+  const actor = await getCurrentUser()
+  if (actor) {
+    appendActivityLog(
+      buildLogFromUser(
+        actor,
+        'configure_event',
+        `${actor.displayName} rejected event ${events[idx].name}`,
+        events[idx]
+      )
+    )
+  }
+
+  return delay(events[idx])
+}
+
 export async function getAllEvents(): Promise<Event[]> {
   if (!USE_MOCK) {
     const { data } = await api.get<Event[]>('/admin/events')
@@ -322,6 +513,36 @@ export async function getAllEvents(): Promise<Event[]> {
   }
 
   return delay([...events])
+}
+
+export async function getActivityLogs(
+  filters: ActivityLogFilters = {}
+): Promise<ActivityLog[]> {
+  if (!USE_MOCK) {
+    const { data } = await api.get<ActivityLog[]>('/admin/activity-logs', {
+      params: filters,
+    })
+    return data
+  }
+
+  let result = [...activityLogs]
+
+  if (filters.action && filters.action !== 'all') {
+    result = result.filter((log) => log.action === filters.action)
+  }
+
+  if (filters.fromDate) {
+    const from = new Date(`${filters.fromDate}T00:00:00`).toISOString()
+    result = result.filter((log) => log.occurredAt >= from)
+  }
+
+  if (filters.toDate) {
+    const to = new Date(`${filters.toDate}T23:59:59.999`).toISOString()
+    result = result.filter((log) => log.occurredAt <= to)
+  }
+
+  result.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+  return delay(result)
 }
 
 export default api

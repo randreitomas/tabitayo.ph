@@ -8,6 +8,7 @@ import { TableBrowse } from '@/components/guest/TableBrowse'
 import { SeatResult } from '@/components/guest/SeatResult'
 import { EventDetails } from '@/components/guest/EventDetails'
 import { LogoFull } from '@/components/logo/LogoFull'
+import { isEventGuestLive } from '@/lib/eventApproval'
 
 export function EventPage() {
   const { eventId } = useParams<{ eventId: string }>()
@@ -33,15 +34,17 @@ export function EventPage() {
     )
   }
 
-  if (event.status !== 'active') {
+  if (!isEventGuestLive(event)) {
     return (
       <div className="text-center py-16 space-y-4">
         <LogoFull size="lg" className="mb-6" />
         <h1 className="font-heading text-3xl">{event.name}</h1>
         <p className="text-muted text-sm max-w-xs mx-auto">
-          {event.status === 'ended'
-            ? 'This event has ended. Thank you for celebrating with us.'
-            : 'This event is no longer available.'}
+          {event.status !== 'active'
+            ? event.status === 'ended'
+              ? 'This event has ended. Thank you for celebrating with us.'
+              : 'This event is no longer available.'
+            : 'This event is not live yet. Please check back soon or ask your host.'}
         </p>
       </div>
     )

@@ -1,5 +1,7 @@
 import type { Event } from '@/types/event'
+import { hasAnyMenu } from '@/lib/menu'
 import { FloorPlan } from '@/components/guest/FloorPlan'
+import { MenuDisplay } from '@/components/guest/MenuDisplay'
 import { PhotoGallery } from '@/components/guest/PhotoGallery'
 
 interface EventDetailsProps {
@@ -7,12 +9,12 @@ interface EventDetailsProps {
 }
 
 export function EventDetails({ event }: EventDetailsProps) {
-  const showMenu = Boolean(event.menuContent)
-  const showPlaylist = Boolean(event.spotifyUrl)
+  const showFloorPlan = Boolean(event.floorPlanUrl)
+  const showMenu = hasAnyMenu(event.menu)
+  const showPlaylist = Boolean(event.spotifyUrl?.trim())
   const showPhotos = event.photoShareEnabled
 
-  const hasContent =
-    event.floorPlanUrl || showMenu || showPlaylist || showPhotos
+  const hasContent = showFloorPlan || showMenu || showPlaylist || showPhotos
 
   if (!hasContent) return null
 
@@ -24,16 +26,11 @@ export function EventDetails({ event }: EventDetailsProps) {
         <div className="flex-1 h-px bg-border" />
       </div>
 
-      <FloorPlan imageUrl={event.floorPlanUrl} eventName={event.name} />
-
-      {showMenu && (
-        <div>
-          <h3 className="font-heading text-xl text-center mb-3">Menu</h3>
-          <div className="text-sm whitespace-pre-line text-center text-dark/90 leading-relaxed">
-            {event.menuContent!.replace(/\*\*(.*?)\*\*/g, '$1')}
-          </div>
-        </div>
+      {showFloorPlan && (
+        <FloorPlan imageUrl={event.floorPlanUrl} eventName={event.name} />
       )}
+
+      {showMenu && <MenuDisplay menu={event.menu} />}
 
       {showPlaylist && (
         <div>

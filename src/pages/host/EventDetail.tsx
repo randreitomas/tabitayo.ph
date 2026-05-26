@@ -2,29 +2,28 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvent'
 import { updateEvent, getEventPhotos, updatePhotoStatus } from '@/lib/api'
-import type { PhotoShareItem } from '@/types/event'
+import type { EventMenu, PhotoShareItem } from '@/types/event'
 import { Tabs, type TabItem } from '@/components/ui/Tabs'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { FloorPlan } from '@/components/guest/FloorPlan'
+import { FloorPlanEditor } from '@/components/host/FloorPlanEditor'
+import { MenuEditor } from '@/components/host/MenuEditor'
 import { QRDisplay } from '@/components/host/QRDisplay'
 import { GuestManager } from './GuestManager'
+import { EventApprovalBanner } from '@/components/host/EventApprovalBanner'
+import { APPROVAL_LABELS, approvalBadgeVariant, canHostPublishQr } from '@/lib/eventApproval'
 
 export function EventDetail() {
   const { id } = useParams<{ id: string }>()
   const { event, loading, setEvent } = useEvent(id)
   const [activeTab, setActiveTab] = useState('guests')
   const [photos, setPhotos] = useState<PhotoShareItem[]>([])
-  const [menuDraft, setMenuDraft] = useState('')
   const [spotifyDraft, setSpotifyDraft] = useState('')
-  const [floorPlanUrl, setFloorPlanUrl] = useState('')
 
   useEffect(() => {
     if (event) {
-      setMenuDraft(event.menuContent ?? '')
       setSpotifyDraft(event.spotifyUrl ?? '')
-      setFloorPlanUrl(event.floorPlanUrl ?? '')
     }
   }, [event])
 
@@ -42,6 +41,10 @@ export function EventDetail() {
     setEvent(updated)
   }
 
+  const saveMenu = async (menu: EventMenu | undefined) => {
+    await saveEventPatch({ menu })
+  }
+
   const tabs: TabItem[] = [
     {
       id: 'guests',
@@ -51,34 +54,12 @@ export function EventDetail() {
     {
       id: 'floor',
       label: 'Floor Plan',
-      content: (
-        <div className="space-y-4 max-w-lg">
-          <Input
-            label="Floor plan image URL"
-            value={floorPlanUrl}
-            onChange={(e) => setFloorPlanUrl(e.target.value)}
-          />
-          <Button onClick={() => saveEventPatch({ floorPlanUrl: floorPlanUrl || undefined })}>
-            Save floor plan
-          </Button>
-          <FloorPlan imageUrl={floorPlanUrl} eventName={event.name} />
-        </div>
-      ),
+      content: <FloorPlanEditor event={event} onUpdated={setEvent} />,
     },
     {
       id: 'menu',
       label: 'Menu',
-      content: (
-        <div className="space-y-4 max-w-lg">
-          <label className="block text-xs text-muted">Menu content (markdown-style)</label>
-          <textarea
-            className="w-full min-h-40 px-3 py-2 border border-border rounded-sm font-body text-sm"
-            value={menuDraft}
-            onChange={(e) => setMenuDraft(e.target.value)}
-          />
-          <Button onClick={() => saveEventPatch({ menuContent: menuDraft })}>Save menu</Button>
-        </div>
-      ),
+      content: <MenuEditor event={event} onSave={saveMenu} />,
     },
     {
       id: 'playlist',
@@ -148,7 +129,13 @@ export function EventDetail() {
     {
       id: 'qr',
       label: 'QR Code',
-      content: <QRDisplay eventId={event.id} eventName={event.name} />,
+      content: canHostPublishQr(event) ? (
+        <QRDisplay eventId={event.id} eventName={event.name} />
+      ) : (
+        <p className="text-sm text-muted text-center py-8">
+          QR code will be available after your event is approved.
+        </p>
+      ),
     },
   ]
 
@@ -163,13 +150,16 @@ export function EventDetail() {
           <p className="text-sm text-muted mt-1">
             {event.venue} · {new Date(event.date).toLocaleDateString('en-PH')}
           </p>
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2 mt-2 flex-wrap">
+            <Badge variant={approvalBadgeVariant(event.approvalStatus)}>
+              {APPROVAL_LABELS[event.approvalStatus]}
+            </Badge>
             <Badge variant={event.status}>{event.status}</Badge>
             <Badge>{event.tier}</Badge>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {event.status === 'active' && (
+          {event.status === 'active' && event.approvalStatus === 'approved' && (
             <Button variant="secondary" size="sm" onClick={() => saveEventPatch({ status: 'ended' })}>
               Mark ended
             </Button>
@@ -179,13 +169,17 @@ export function EventDetail() {
               Archive
             </Button>
           )}
-          <Link to={`/e/${event.id}`} target="_blank" rel="noreferrer">
-            <Button variant="ghost" size="sm">
-              Preview guest page
-            </Button>
-          </Link>
+          {canHostPublishQr(event) && (
+            <Link to={`/e/${event.id}`} target="_blank" rel="noreferrer">
+              <Button variant="ghost" size="sm">
+                Preview guest page
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
+
+      <EventApprovalBanner event={event} onUpdated={setEvent} />
 
       <Tabs tabs={tabs} activeId={activeTab} onChange={setActiveTab} />
     </div>

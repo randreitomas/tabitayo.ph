@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { getHostEvents } from '@/lib/api'
 import type { Event } from '@/types/event'
+import { APPROVAL_LABELS, approvalBadgeVariant } from '@/lib/eventApproval'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -38,9 +39,14 @@ export function HostDashboard() {
             <li key={event.id}>
               <Link to={`/host/events/${event.id}`}>
                 <Card className="hover:border-dusty-rose/60 transition-colors h-full">
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
                     <h2 className="font-heading text-xl">{event.name}</h2>
-                    <Badge variant={event.status}>{event.status}</Badge>
+                    <div className="flex gap-1 flex-wrap">
+                      <Badge variant={approvalBadgeVariant(event.approvalStatus)}>
+                        {APPROVAL_LABELS[event.approvalStatus]}
+                      </Badge>
+                      <Badge variant={event.status}>{event.status}</Badge>
+                    </div>
                   </div>
                   <p className="text-xs text-muted">
                     {new Date(event.date).toLocaleDateString('en-PH')} · {event.venue}

@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { Guest, GuestNameSuggestion } from '@/types/guest'
 import { getPublicGuestSuggestions } from '@/lib/api'
-import { createGuestFuse, searchGuests } from '@/lib/fuse'
+import { filterGuestsForSuggestions } from '@/lib/guestNameSearch'
 
 const DEBOUNCE_MS = 280
-const MIN_QUERY_LENGTH = 2
+/** API accepts q from 1 character; supports last-name-first typing. */
+const MIN_QUERY_LENGTH = 1
 
 interface UseGuestNameSuggestionsOptions {
   lookupToken: string
   query: string
   enabled: boolean
-  /** When set, suggestions are computed locally (mock mode). */
+  /** When set (mock mode only), suggestions are computed in-browser instead of the API. */
   mockGuests?: Guest[]
 }
 
@@ -38,16 +39,11 @@ export function useGuestNameSuggestions({
     }
 
     if (mockGuests) {
-      const fuse = createGuestFuse(mockGuests)
-      const matches = searchGuests(fuse, trimmed)
-      const seen = new Set<string>()
-      const items: GuestNameSuggestion[] = []
-      for (const guest of matches) {
-        if (seen.has(guest.fullName)) continue
-        seen.add(guest.fullName)
-        items.push({ displayName: guest.fullName })
-      }
-      setSuggestions(items)
+      setSuggestions(
+        filterGuestsForSuggestions(mockGuests, trimmed).map((guest) => ({
+          displayName: guest.fullName,
+        }))
+      )
       setLoading(false)
       return
     }

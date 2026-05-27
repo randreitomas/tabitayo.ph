@@ -10,7 +10,10 @@ import type {
   PublicGuestLookupPayload,
   PublicGuestLookupResult,
 } from '@/types/guest'
-import { createGuestFuse, searchGuests } from '@/lib/fuse'
+import {
+  filterGuestsForSuggestions,
+  findGuestForNameLookup,
+} from '@/lib/guestNameSearch'
 import { guestFromLookupResult } from '@/lib/api/mappers'
 import type {
   AuthResponse,
@@ -176,6 +179,7 @@ export async function getHostEvent(eventId: string): Promise<Event | null> {
   return delay(event)
 }
 
+/** Autocomplete while typing — live API on deploy; local mock uses guestNameSearch.ts. */
 export async function getPublicGuestSuggestions(
   lookupToken: string,
   query: string
@@ -197,28 +201,20 @@ export async function getPublicGuestSuggestions(
   if (!event || !isEventGuestLive(event)) return []
 
   const list = guests.filter((g) => g.eventId === event.id)
-  const fuse = createGuestFuse(list)
-  const matches = searchGuests(fuse, q)
-  const unique = new Set<string>()
-  const items: GuestNameSuggestion[] = []
-  for (const guest of matches) {
-    if (unique.has(guest.fullName)) continue
-    unique.add(guest.fullName)
-    items.push({ displayName: guest.fullName })
-  }
-  return delay(items)
+  return delay(
+    filterGuestsForSuggestions(list, q).map((guest) => ({
+      displayName: guest.fullName,
+    }))
+  )
 }
 
+/** Final seat assignment — always POST guest-lookup on deploy. */
 export async function publicGuestLookup(
   lookupToken: string,
   payload: PublicGuestLookupPayload
 ): Promise<PublicGuestLookupResult | null> {
   if (!USE_MOCK) {
-    let result = await backend.backendPublicGuestLookup(lookupToken, payload)
-    if (!result && 'name' in payload && typeof payload.name === 'string') {
-      result = await backend.backendSearchPublicGuestLegacy(lookupToken, payload.name)
-    }
-    return result
+    return backend.backendPublicGuestLookup(lookupToken, payload)
   }
 
   const event =
@@ -236,19 +232,14 @@ export async function publicGuestLookup(
   if ('lookup_token' in payload) {
     match = list.find((g) => g.lookupToken === payload.lookup_token)
   } else if ('invite_code' in payload && 'name' in payload) {
-    const q = payload.name.trim().toLowerCase()
-    match = list.find(
-      (g) =>
-        g.fullName.toLowerCase().includes(q) &&
-        g.inviteCode?.toUpperCase() === payload.invite_code.toUpperCase()
-    )
-  } else if ('name' in payload) {
-    const q = payload.name.trim().toLowerCase()
+    const candidate = findGuestForNameLookup(list, payload.name)
     match =
-      list.find((g) => g.fullName.toLowerCase() === q) ??
-      list.find((g) => g.fullName.toLowerCase().includes(q)) ??
-      list.find((g) => g.alias?.toLowerCase() === q) ??
-      list.find((g) => g.alias?.toLowerCase().includes(q))
+      candidate &&
+      candidate.inviteCode?.toUpperCase() === payload.invite_code.toUpperCase()
+        ? candidate
+        : undefined
+  } else if ('name' in payload) {
+    match = findGuestForNameLookup(list, payload.name)
   }
 
   if (!match) return null

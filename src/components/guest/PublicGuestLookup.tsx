@@ -15,7 +15,7 @@ interface PublicGuestLookupProps {
   mockGuests?: Guest[]
 }
 
-const MIN_SUGGESTION_QUERY_LENGTH = 2
+const MIN_SUGGESTION_QUERY_LENGTH = 1
 
 function SuggestionList({
   suggestions,
@@ -90,8 +90,9 @@ export function PublicGuestLookup({
     mockGuests,
   })
 
+  /** Final seat assignment — POST guest-lookup with canonical or typed name. */
   const runLookup = useCallback(
-    async (nameOverride?: string) => {
+    async (lookupName?: string) => {
       setLoading(true)
       setError(null)
       setNotFound(false)
@@ -107,14 +108,14 @@ export function PublicGuestLookup({
           if (token.length < 4) return
           payload = { lookup_token: token }
         } else if (guestLookupMode === 'invite_code') {
-          const q = (nameOverride ?? name).trim()
+          const guestName = (lookupName ?? name).trim()
           const code = inviteCode.trim()
-          if (q.length < 2 || code.length < 2) return
-          payload = { name: q, invite_code: code }
+          if (guestName.length < 1 || code.length < 2) return
+          payload = { name: guestName, invite_code: code }
         } else {
-          const q = (nameOverride ?? name).trim()
-          if (q.length < 2) return
-          payload = { name: q }
+          const guestName = (lookupName ?? name).trim()
+          if (guestName.length < 1) return
+          payload = { name: guestName }
         }
 
         const result = await publicGuestLookup(lookupToken, payload)
@@ -161,8 +162,8 @@ export function PublicGuestLookup({
     guestLookupMode === 'personal_token'
       ? personalToken.trim().length >= 4
       : guestLookupMode === 'invite_code'
-        ? name.trim().length >= 2 && inviteCode.trim().length >= 2
-        : name.trim().length >= 2
+        ? name.trim().length >= 1 && inviteCode.trim().length >= 2
+        : name.trim().length >= 1
 
   return (
     <div className="space-y-3">
@@ -189,7 +190,7 @@ export function PublicGuestLookup({
         <>
           <Input
             label={guestLookupMode === 'invite_code' ? 'Your name' : 'Find your name'}
-            placeholder="Start typing your name..."
+            placeholder="First name, last name, or nickname..."
             value={name}
             onChange={(e) => {
               setName(e.target.value)

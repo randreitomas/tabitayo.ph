@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/Button'
 
 interface GuestTableProps {
   guests: Guest[]
+  duplicateSeatGuestIds?: Set<string>
   onDelete?: (guestId: string) => void
 }
 
-export function GuestTable({ guests, onDelete }: GuestTableProps) {
+export function GuestTable({ guests, duplicateSeatGuestIds, onDelete }: GuestTableProps) {
   if (guests.length === 0) {
     return <p className="text-sm text-muted py-8 text-center">No guests yet. Add manually or upload CSV.</p>
   }
@@ -31,12 +32,32 @@ export function GuestTable({ guests, onDelete }: GuestTableProps) {
             const arrived = isGuestArrived(g)
             const arrivedAt = formatArrivedAt(g.seatConfirmedAt)
 
+            const duplicateSeat = duplicateSeatGuestIds?.has(g.id) ?? false
+
             return (
-              <tr key={g.id} className="border-b border-border last:border-0">
-                <td className="px-3 py-2">{g.fullName}</td>
+              <tr
+                key={g.id}
+                className={[
+                  'border-b border-border last:border-0',
+                  duplicateSeat ? 'bg-red-50/80' : '',
+                ].join(' ')}
+              >
+                <td className="px-3 py-2">
+                  {g.fullName}
+                  {duplicateSeat && (
+                    <span className="block text-[10px] text-red-700 mt-0.5">
+                      Duplicate seat
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-muted">{g.alias ?? '—'}</td>
                 <td className="px-3 py-2">{g.tableNumber}</td>
-                <td className="px-3 py-2">{g.seatNumber ?? '—'}</td>
+                <td className="px-3 py-2">
+                  {g.seatNumber ?? '—'}
+                  {duplicateSeat && (
+                    <span className="block text-[10px] text-red-700 mt-0.5">Conflict</span>
+                  )}
+                </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-col gap-0.5">
                     <Badge variant={arrived ? 'approved' : 'pending'}>

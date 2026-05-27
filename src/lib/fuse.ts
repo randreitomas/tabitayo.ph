@@ -22,6 +22,14 @@ export function createGuestFuse(guests: Guest[]): Fuse<Guest> {
         weight: 0.5,
         getFn: (guest) => normalizeName(guest.fullName),
       },
+      {
+        name: 'lastName',
+        weight: 0.55,
+        getFn: (guest) => {
+          const parts = normalizeName(guest.fullName).split(' ').filter(Boolean)
+          return parts[parts.length - 1] ?? ''
+        },
+      },
     ],
     threshold: 0.35,
     distance: 100,

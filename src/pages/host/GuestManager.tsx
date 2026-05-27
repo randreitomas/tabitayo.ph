@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGuests } from '@/hooks/useGuests'
+import { GuestArrivalSummary } from '@/components/host/GuestArrivalSummary'
 import { addGuest, uploadGuestsCsv, deleteGuest } from '@/lib/api'
 import type { CreateGuestInput } from '@/types/guest'
 import type { GuestLookupMode } from '@/types/event'
@@ -14,9 +15,12 @@ interface GuestManagerProps {
   guestLookupMode?: GuestLookupMode
 }
 
+const ARRIVAL_REFRESH_MS = 30_000
+
 export function GuestManager({ eventId, guestLookupMode = 'name_only' }: GuestManagerProps) {
-  const { guests, refresh } = useGuests(eventId)
+  const { guests, loading, refresh } = useGuests(eventId)
   const [modalOpen, setModalOpen] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [form, setForm] = useState<CreateGuestInput & { inviteCode?: string }>({
     fullName: '',
     alias: '',
@@ -49,8 +53,30 @@ export function GuestManager({ eventId, guestLookupMode = 'name_only' }: GuestMa
     refresh()
   }
 
+  const handleRefreshArrivals = async () => {
+    setRefreshing(true)
+    try {
+      await refresh()
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      void refresh()
+    }, ARRIVAL_REFRESH_MS)
+    return () => window.clearInterval(id)
+  }, [refresh])
+
   return (
     <div className="space-y-6">
+      <GuestArrivalSummary
+        guests={guests}
+        onRefresh={() => void handleRefreshArrivals()}
+        refreshing={refreshing || loading}
+      />
+
       <div className="flex flex-wrap gap-3">
         <Button onClick={() => setModalOpen(true)}>Add guest</Button>
       </div>

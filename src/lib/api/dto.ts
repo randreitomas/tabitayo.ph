@@ -109,10 +109,19 @@ export interface ApiSeatConfirmResponse extends ApiGuestLookupResponse {
   seat_confirmed_at?: string | null
 }
 
-export interface ApiGuestSearchResult extends ApiPublicEvent {
-  guest_name: string
-  table_number: string
-  seat_number?: string | null
+/** GET /public/events/{token}/guests/search — same shape as guest lookup */
+export type ApiGuestSearchResult = ApiGuestLookupResponse
+
+export interface ApiFloorPlanAssetRead {
+  floor_plan_url: string
+}
+
+export interface ApiMenuAssetRead {
+  menu: ApiMenuJson
+}
+
+export interface ApiSpotifyPlaylistRead {
+  spotify_playlist_url: string
 }
 
 export interface ApiPaymentSubmission {

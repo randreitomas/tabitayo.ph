@@ -179,14 +179,11 @@ export async function publicGuestLookup(
   payload: PublicGuestLookupPayload
 ): Promise<PublicGuestLookupResult | null> {
   if (!USE_MOCK) {
-    try {
-      return await backend.backendPublicGuestLookup(lookupToken, payload)
-    } catch {
-      if ('name' in payload && typeof payload.name === 'string') {
-        return backend.backendSearchPublicGuestLegacy(lookupToken, payload.name)
-      }
-      return null
+    let result = await backend.backendPublicGuestLookup(lookupToken, payload)
+    if (!result && 'name' in payload && typeof payload.name === 'string') {
+      result = await backend.backendSearchPublicGuestLegacy(lookupToken, payload.name)
     }
+    return result
   }
 
   const event =
@@ -214,7 +211,9 @@ export async function publicGuestLookup(
     const q = payload.name.trim().toLowerCase()
     match =
       list.find((g) => g.fullName.toLowerCase() === q) ??
-      list.find((g) => g.fullName.toLowerCase().includes(q))
+      list.find((g) => g.fullName.toLowerCase().includes(q)) ??
+      list.find((g) => g.alias?.toLowerCase() === q) ??
+      list.find((g) => g.alias?.toLowerCase().includes(q))
   }
 
   if (!match) return null
@@ -530,6 +529,33 @@ export async function updateEvent(
   }
 
   return delay(events[idx])
+}
+
+/** Soft-delete event — removes it from host lists and public guest lookup (API DELETE). */
+export async function deleteEvent(eventId: string): Promise<void> {
+  if (!USE_MOCK) {
+    await backend.backendDeleteEvent(eventId)
+    return
+  }
+
+  const removed = events.find((e) => e.id === eventId)
+  events = events.filter((e) => e.id !== eventId)
+  guests = guests.filter((g) => g.eventId !== eventId)
+  photos = photos.filter((p) => p.eventId !== eventId)
+
+  const actor = await getCurrentUser()
+  if (actor && removed) {
+    appendActivityLog(
+      buildLogFromUser(
+        actor,
+        'configure_event',
+        `${actor.displayName} deleted event ${removed.name}`,
+        removed
+      )
+    )
+  }
+
+  return delay(undefined)
 }
 
 export async function addGuest(

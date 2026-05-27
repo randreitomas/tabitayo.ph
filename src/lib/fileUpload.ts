@@ -10,9 +10,17 @@ export function readImageAsDataUrl(file: File): Promise<string> {
   })
 }
 
+const UPLOADABLE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'] as const
+
 export function isUploadableImage(file: File): boolean {
-  return ['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)
+  return (UPLOADABLE_IMAGE_TYPES as readonly string[]).includes(file.type)
 }
+
+export const UPLOADABLE_IMAGE_ACCEPT = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/webp': ['.webp'],
+} as const
 
 /** @deprecated Use isUploadableImage */
 export const isFloorPlanImage = isUploadableImage

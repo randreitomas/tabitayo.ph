@@ -9,7 +9,9 @@ import {
   sanitizeMenu,
 } from '@/lib/menu'
 import { uploadEventMenuImage, updateEvent, deleteEventMenu } from '@/lib/api'
-import { resolveMediaUrl } from '@/lib/api/mediaUrl'
+import { getApiErrorMessage } from '@/lib/api/errors'
+import { MediaImage } from '@/components/ui/MediaImage'
+import { UPLOADABLE_IMAGE_ACCEPT } from '@/lib/fileUpload'
 import { Button } from '@/components/ui/Button'
 
 /** Public Canva template gallery — hosts can duplicate and customize */
@@ -24,7 +26,6 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
   const [mode, setMode] = useState<MenuDisplayMode>(() => inferMenuDisplayMode(event))
   const [draft, setDraft] = useState<EventMenu>(EMPTY_MENU)
   const [saving, setSaving] = useState(false)
-  const [switching, setSwitching] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,26 +34,11 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
     setDraft(normalizeMenu(event.menu))
   }, [event])
 
-  const selectMode = async (next: MenuDisplayMode) => {
-    if (next === mode) return
+  const selectMode = (next: MenuDisplayMode) => {
     setError(null)
-    setSwitching(true)
-    try {
-      const updated = await updateEvent(event.id, {
-        menuDisplayMode: next,
-        ...(next === 'text'
-          ? { menuImageUrl: undefined }
-          : { menu: undefined }),
-      })
-      onUpdated(updated)
-      setMode(next)
-      if (next === 'text') {
-        setDraft(normalizeMenu(updated.menu))
-      }
-    } catch {
-      setError('Could not switch menu type. Try again.')
-    } finally {
-      setSwitching(false)
+    setMode(next)
+    if (next === 'text') {
+      setDraft(normalizeMenu(event.menu))
     }
   }
 
@@ -70,8 +56,9 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
         menuImageUrl: undefined,
       })
       onUpdated(updated)
-    } catch {
-      setError('Could not save menu. Try again.')
+      setMode('text')
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not save menu. Try again.'))
     } finally {
       setSaving(false)
     }
@@ -86,8 +73,11 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
       try {
         const updated = await uploadEventMenuImage(event.id, file)
         onUpdated(updated)
-      } catch {
-        setError('Upload failed. Use a JPG or PNG under 5 MB.')
+        setMode('image')
+      } catch (err) {
+        setError(
+          getApiErrorMessage(err, 'Upload failed. Use a JPG, PNG, or WebP image under 5 MB.')
+        )
       } finally {
         setUploading(false)
       }
@@ -97,19 +87,22 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'] },
+    accept: UPLOADABLE_IMAGE_ACCEPT,
     maxFiles: 1,
     maxSize: 5 * 1024 * 1024,
-    disabled: uploading || mode !== 'image',
+    disabled: uploading,
   })
 
   const removeMenuImage = async () => {
     setError(null)
-    const updated = await deleteEventMenu(event.id)
-    onUpdated(updated)
+    try {
+      const updated = await deleteEventMenu(event.id)
+      onUpdated(updated)
+      setMode('text')
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not remove menu image.'))
+    }
   }
-
-  const menuImageSrc = resolveMediaUrl(event.menuImageUrl)
 
   return (
     <div className="space-y-5 max-w-lg">
@@ -121,28 +114,24 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
-          disabled={switching}
           onClick={() => selectMode('text')}
           className={[
             'px-3 py-2.5 text-sm font-body rounded-sm border transition-colors',
             mode === 'text'
               ? 'border-dark bg-dark text-ivory'
               : 'border-border bg-ivory text-dark hover:border-sage/60',
-            switching ? 'opacity-50' : '',
           ].join(' ')}
         >
           Type courses
         </button>
         <button
           type="button"
-          disabled={switching}
           onClick={() => selectMode('image')}
           className={[
             'px-3 py-2.5 text-sm font-body rounded-sm border transition-colors',
             mode === 'image'
               ? 'border-dark bg-dark text-ivory'
               : 'border-border bg-ivory text-dark hover:border-sage/60',
-            switching ? 'opacity-50' : '',
           ].join(' ')}
         >
           Upload image
@@ -172,7 +161,7 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
             </div>
           ))}
 
-          <Button onClick={handleSaveCourses} disabled={saving}>
+          <Button onClick={() => void handleSaveCourses()} disabled={saving}>
             {saving ? 'Saving...' : 'Save menu'}
           </Button>
         </div>
@@ -182,7 +171,7 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
             <p className="font-heading text-base">Need a layout?</p>
             <p className="text-muted text-xs leading-relaxed">
               Start from a free menu template on Canva, customize it for your event, then
-              export as JPG or PNG and upload below.
+              export as JPG, PNG, or WebP and upload below.
             </p>
             <a
               href={CANVA_MENU_TEMPLATE_URL}
@@ -204,23 +193,24 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
           >
             <input {...getInputProps()} />
             <p className="text-sm font-body">
-              {uploading ? 'Uploading...' : 'Drop your menu here or tap to browse'}
+              {uploading ? 'Uploading...' : 'Drop your menu photo here or tap to browse'}
             </p>
-            <p className="text-xs text-muted mt-2">JPG or PNG · max 5 MB</p>
+            <p className="text-xs text-muted mt-2">JPG, PNG, or WebP · max 5 MB</p>
           </div>
 
-          {menuImageSrc && (
+          {event.menuImageUrl && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted uppercase tracking-wide">Current menu</p>
-                <Button variant="ghost" size="sm" onClick={removeMenuImage}>
+                <Button variant="ghost" size="sm" onClick={() => void removeMenuImage()}>
                   Remove
                 </Button>
               </div>
-              <img
-                src={menuImageSrc}
+              <MediaImage
+                src={event.menuImageUrl}
                 alt={`Menu for ${event.name}`}
                 className="w-full rounded-sm border border-border object-contain max-h-96"
+                unavailableMessage="Menu image could not be loaded. Re-upload the file — on Render free hosting, files can be lost after a server restart."
               />
             </div>
           )}

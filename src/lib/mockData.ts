@@ -111,6 +111,8 @@ export const MOCK_GUESTS: Guest[] = [
     alias: 'Johnny',
     tableNumber: '12',
     seatNumber: '3',
+    seatConfirmationStatus: 'seat_found',
+    seatConfirmedAt: '2026-06-14T17:30:00.000Z',
   },
   {
     id: 'g2',
@@ -119,6 +121,8 @@ export const MOCK_GUESTS: Guest[] = [
     alias: 'Claire',
     tableNumber: '5',
     seatNumber: '1',
+    seatConfirmationStatus: 'seat_found',
+    seatConfirmedAt: '2026-06-14T17:45:00.000Z',
   },
   {
     id: 'g3',

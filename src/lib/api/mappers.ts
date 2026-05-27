@@ -22,6 +22,7 @@ import type {
   ApiGuest,
   ApiGuestLookupResponse,
   ApiGuestSearchResult,
+  ApiMenuAssetRead,
   ApiMenuJson,
   ApiPublicEvent,
   ApiQrCode,
@@ -83,6 +84,10 @@ export function mapAuthResponse(dto: ApiAuthResponse): { token: string; user: Us
   }
 }
 
+export function mapMenuAssetRead(dto: ApiMenuAssetRead): Pick<Event, 'menu' | 'menuDisplayMode' | 'menuImageUrl'> {
+  return mapMenuJson(dto.menu)
+}
+
 function mapMenuJson(menu?: ApiMenuJson | null): Pick<Event, 'menu' | 'menuDisplayMode' | 'menuImageUrl'> {
   if (!menu) return {}
 
@@ -110,20 +115,20 @@ export function mapEvent(dto: ApiEvent): Event {
     id: dto.id,
     publicSlug: dto.public_slug,
     hostId: dto.host_id,
-    name: dto.name,
-    date: dto.date,
-    venue: dto.venue,
-    tier: dto.tier as EventTier,
-    status: dto.status as Event['status'],
+    name: dto.name ?? 'Event',
+    date: dto.date ?? '',
+    venue: dto.venue ?? '',
+    tier: (dto.tier as EventTier) ?? 'free',
+    status: (dto.status as Event['status']) ?? 'active',
     guestLookupMode: mapGuestLookupMode(dto.guest_lookup_mode),
-    approvalStatus: dto.approval_status as Event['approvalStatus'],
+    approvalStatus: (dto.approval_status as Event['approvalStatus']) ?? 'pending_payment',
+    photoShareEnabled: dto.photo_share_enabled ?? false,
     paymentSubmittedAt: dto.payment_submitted_at ?? undefined,
     approvedAt: dto.approved_at ?? undefined,
     rejectedAt: dto.rejected_at ?? undefined,
     rejectionReason: dto.rejection_reason ?? undefined,
     floorPlanUrl: resolveMediaUrl(dto.floor_plan_url ?? undefined),
     spotifyUrl: dto.spotify_url ?? undefined,
-    photoShareEnabled: dto.photo_share_enabled,
     customBranding: dto.custom_branding_json
       ? {
           primaryColor: dto.custom_branding_json.primary_color ?? '#e8c4b8',
@@ -167,7 +172,8 @@ export function mapGuest(dto: ApiGuest): Guest {
     seatNumber: dto.seat_number ?? undefined,
     inviteCode: dto.invite_code ?? undefined,
     lookupToken: dto.lookup_token ?? undefined,
-    seatConfirmationStatus: (dto.seat_confirmation_status as SeatConfirmationStatus) ?? undefined,
+    seatConfirmationStatus:
+      (dto.seat_confirmation_status as SeatConfirmationStatus) ?? 'not_confirmed',
     seatConfirmedAt: dto.seat_confirmed_at ?? undefined,
   }
 }
@@ -219,11 +225,7 @@ export function mapQrCode(dto: ApiQrCode): QrCodeInfo {
 
 export function mapSeatConfirm(dto: ApiSeatConfirmResponse): PublicGuestLookupResult {
   return {
-    guestId: dto.guest_id,
-    eventName: dto.event_name,
-    guestName: dto.guest_name,
-    tableNumber: dto.table_number,
-    seatNumber: dto.seat_number ?? undefined,
+    ...mapGuestLookupResult(dto),
     seatConfirmationStatus: 'seat_found',
   }
 }

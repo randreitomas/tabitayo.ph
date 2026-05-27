@@ -13,8 +13,11 @@ VITE_USE_MOCK=false
 |----------|---------|
 | `tabitayo_token` | `access_token` from login/register |
 | `/e/:slug` | `public_slug` via `GET /public/events/{slug}` |
-| Guest search (API mode) | `GET /public/events/{slug}/guests/search?name=` |
-| Host events | `GET/POST/PATCH /host/events` |
+| Guest search (API mode) | `POST /public/events/{token}/guest-lookup` · fallback `GET .../guests/search?name=` |
+| Guest arrival confirm | `PATCH /public/events/{token}/guests/{guest_id}/seat-found` |
+| Host sees arrivals | `GET /host/events/{id}/guests` → `seat_confirmation_status`, `seat_confirmed_at` |
+| Host events | `GET/POST/PATCH/DELETE /host/events` (DELETE = soft-delete / archive) |
+| Menu photo | `POST /host/events/{id}/menu` (multipart `file`), `DELETE .../menu` |
 | Guests | `GET/POST/DELETE /host/events/{id}/guests` |
 | CSV import | `POST /host/events/{id}/guests/upload-csv` |
 | Admin hosts | `GET /admin/users` (role=host) |

@@ -1,4 +1,4 @@
-import { resolveMediaUrl } from '@/lib/api/mediaUrl'
+import { MediaImage } from '@/components/ui/MediaImage'
 
 interface FloorPlanProps {
   imageUrl?: string
@@ -6,8 +6,7 @@ interface FloorPlanProps {
 }
 
 export function FloorPlan({ imageUrl, eventName }: FloorPlanProps) {
-  const src = resolveMediaUrl(imageUrl)
-  if (!src) {
+  if (!imageUrl) {
     return (
       <p className="text-sm text-muted text-center py-6">
         Floor plan not available for this event.
@@ -17,8 +16,8 @@ export function FloorPlan({ imageUrl, eventName }: FloorPlanProps) {
 
   return (
     <div className="space-y-2">
-      <img
-        src={src}
+      <MediaImage
+        src={imageUrl}
         alt={`Floor plan for ${eventName}`}
         className="w-full rounded-sm border border-border object-cover max-h-80"
       />

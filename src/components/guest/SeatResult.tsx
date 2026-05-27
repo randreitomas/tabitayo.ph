@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { PublicGuestLookupResult } from '@/types/guest'
 import { confirmSeatFound } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/api/errors'
@@ -14,6 +14,12 @@ export function SeatResult({ lookupToken, result, onBack }: SeatResultProps) {
   const [status, setStatus] = useState(result.seatConfirmationStatus)
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setStatus(result.seatConfirmationStatus)
+    setConfirming(false)
+    setError(null)
+  }, [result.guestId, result.seatConfirmationStatus])
 
   const handleConfirm = async () => {
     setConfirming(true)
@@ -54,7 +60,7 @@ export function SeatResult({ lookupToken, result, onBack }: SeatResultProps) {
         <p className="text-sm text-sage font-body">You&apos;re all set — enjoy the celebration!</p>
       ) : (
         <Button fullWidth onClick={() => void handleConfirm()} disabled={confirming}>
-          {confirming ? 'Saving...' : 'I found my seat'}
+          {confirming ? 'Saving...' : "I've arrived — I found my seat"}
         </Button>
       )}
       {error && <p className="text-xs text-red-600">{error}</p>}

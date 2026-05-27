@@ -1,6 +1,7 @@
 import type { Event } from '@/types/event'
 import { USE_MOCK } from '@/lib/api/config'
 import { hasMenuForGuests, inferMenuDisplayMode } from '@/lib/menu'
+import { toSpotifyEmbedUrl } from '@/lib/spotify'
 import { FloorPlan } from '@/components/guest/FloorPlan'
 import { MenuDisplay } from '@/components/guest/MenuDisplay'
 import { PhotoGallery } from '@/components/guest/PhotoGallery'
@@ -13,7 +14,8 @@ export function EventDetails({ event }: EventDetailsProps) {
   const showFloorPlan = Boolean(event.floorPlanUrl)
   const showMenu = hasMenuForGuests(event)
   const menuMode = inferMenuDisplayMode(event)
-  const showPlaylist = Boolean(event.spotifyUrl?.trim())
+  const spotifyEmbedSrc = event.spotifyUrl ? toSpotifyEmbedUrl(event.spotifyUrl) : null
+  const showPlaylist = Boolean(spotifyEmbedSrc)
   const showPhotos = USE_MOCK && event.photoShareEnabled
 
   const hasContent = showFloorPlan || showMenu || showPlaylist || showPhotos
@@ -43,7 +45,7 @@ export function EventDetails({ event }: EventDetailsProps) {
         <div>
           <h3 className="font-heading text-xl text-center mb-3">Playlist</h3>
           <iframe
-            src={event.spotifyUrl}
+            src={spotifyEmbedSrc!}
             width="100%"
             height="152"
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"

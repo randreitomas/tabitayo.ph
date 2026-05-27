@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { lockDocumentScroll, unlockDocumentScroll } from '@/lib/scrollLock'
 import { Button } from './Button'
 
 interface ModalProps {
@@ -16,10 +17,10 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
+    lockDocumentScroll()
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      unlockDocumentScroll()
     }
   }, [open, onClose])
 

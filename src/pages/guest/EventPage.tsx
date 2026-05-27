@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvent'
 import { useGuests } from '@/hooks/useGuests'
@@ -26,10 +26,18 @@ function guestToLookupResult(guest: Guest, eventName: string): PublicGuestLookup
 
 export function EventPage() {
   const { eventId: lookupToken } = useParams<{ eventId: string }>()
-  const { event, loading, error } = useEvent(lookupToken, 'public')
+  const { event, loading, error, refresh } = useEvent(lookupToken, 'public')
   const { guests, loading: guestsLoading } = useGuests(USE_MOCK ? lookupToken : undefined)
   const [seatResult, setSeatResult] = useState<PublicGuestLookupResult | null>(null)
   const [browseByTable, setBrowseByTable] = useState(false)
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [refresh])
 
   if (loading) {
     return (
@@ -131,6 +139,7 @@ export function EventPage() {
       {seatResult && (
         <section className="pt-2 border-t border-border">
           <SeatResult
+            key={seatResult.guestId}
             lookupToken={token}
             result={seatResult}
             onBack={() => setSeatResult(null)}

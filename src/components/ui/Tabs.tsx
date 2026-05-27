@@ -3,20 +3,23 @@ import type { ReactNode } from 'react'
 export interface TabItem {
   id: string
   label: string
-  content: ReactNode
+  /** @deprecated Prefer `children` on `<Tabs>` so only the active panel mounts */
+  content?: ReactNode
 }
 
 interface TabsProps {
   tabs: TabItem[]
   activeId: string
   onChange: (id: string) => void
+  children?: ReactNode
 }
 
-export function Tabs({ tabs, activeId, onChange }: TabsProps) {
+export function Tabs({ tabs, activeId, onChange, children }: TabsProps) {
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0]
+  const panel = children ?? active?.content
 
   return (
-    <div>
+    <div className="min-h-0">
       <div
         className="flex gap-1 overflow-x-auto border-b border-border -mx-1 px-1 scrollbar-none"
         role="tablist"
@@ -39,8 +42,8 @@ export function Tabs({ tabs, activeId, onChange }: TabsProps) {
           </button>
         ))}
       </div>
-      <div className="pt-5" role="tabpanel">
-        {active?.content}
+      <div className="pt-5 min-h-0" role="tabpanel">
+        {panel}
       </div>
     </div>
   )

@@ -9,7 +9,13 @@ import type { HostAccount, LoginInput, RegisterInput, User } from '@/types/user'
 import type { ActivityLog, ActivityLogFilters } from '@/types/activityLog'
 import { apiClient } from './client'
 import { getApiErrorMessage, isApiNotFound } from './errors'
-import type { ApiAuthResponse, ApiEvent, ApiPaymentSubmission, ApiQrCode } from './dto'
+import type {
+  ApiAuthResponse,
+  ApiEvent,
+  ApiMenuAssetRead,
+  ApiPaymentSubmission,
+  ApiQrCode,
+} from './dto'
 import {
   guestFromSearchResult,
   mapAuthResponse,
@@ -17,6 +23,7 @@ import {
   mapGuest,
   mapGuestLookupResult,
   mapHostAccount,
+  mapMenuAssetRead,
   mapPublicEvent,
   mapQrCode,
   mapSeatConfirm,
@@ -37,15 +44,20 @@ function unwrapList<T>(data: unknown, key?: string): T[] {
   return obj.items ?? []
 }
 
-async function uploadMultipart(eventId: string, path: string, file: File): Promise<Event> {
+async function refetchHostEvent(eventId: string): Promise<Event> {
+  const event = await backendGetHostEvent(eventId)
+  if (!event) throw new Error('Event not found')
+  return event
+}
+
+/** Let axios set multipart boundary — do not set Content-Type manually. */
+async function uploadMultipart(eventId: string, path: string, file: File): Promise<void> {
   const form = new FormData()
   form.append('file', file)
-  const { data } = await apiClient.post<ApiEvent>(
-    `/host/events/${encodeURIComponent(eventId)}${path}`,
-    form,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
-  )
-  return mapEvent(data)
+  await apiClient.post(`/host/events/${encodeURIComponent(eventId)}${path}`, form, {
+    headers: { 'Content-Type': undefined },
+    validateStatus: (s) => s >= 200 && s < 300,
+  })
 }
 
 // ——— Auth ———
@@ -125,13 +137,7 @@ export async function backendSearchPublicGuestLegacy(
       `/public/events/${encodeURIComponent(lookupToken)}/guests/search`,
       { params: { name: name.trim() } }
     )
-    return {
-      guestId: `legacy-${lookupToken}`,
-      eventName: data.event_name,
-      guestName: data.guest_name,
-      tableNumber: data.table_number,
-      seatNumber: data.seat_number ?? undefined,
-    }
+    return mapGuestLookupResult(data)
   } catch (err) {
     if (isApiNotFound(err)) return null
     throw new Error(getApiErrorMessage(err, 'Search failed'))
@@ -189,43 +195,50 @@ export async function backendDeleteEvent(eventId: string): Promise<void> {
 // ——— Host assets ———
 
 export async function backendUploadFloorPlan(eventId: string, file: File): Promise<Event> {
-  return uploadMultipart(eventId, '/floor-plan', file)
+  await uploadMultipart(eventId, '/floor-plan', file)
+  return refetchHostEvent(eventId)
 }
 
 export async function backendDeleteFloorPlan(eventId: string): Promise<Event> {
-  const { data } = await apiClient.delete<ApiEvent>(
-    `/host/events/${encodeURIComponent(eventId)}/floor-plan`
-  )
-  return mapEvent(data)
+  await apiClient.delete(`/host/events/${encodeURIComponent(eventId)}/floor-plan`)
+  return refetchHostEvent(eventId)
 }
 
 export async function backendUploadMenu(eventId: string, file: File): Promise<Event> {
-  return uploadMultipart(eventId, '/menu', file)
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.post<ApiMenuAssetRead>(
+    `/host/events/${encodeURIComponent(eventId)}/menu`,
+    form,
+    {
+      headers: { 'Content-Type': undefined },
+      validateStatus: (s) => s >= 200 && s < 300,
+    }
+  )
+  const menuFields = mapMenuAssetRead(data)
+  const base = await refetchHostEvent(eventId)
+  return { ...base, ...menuFields }
 }
 
 export async function backendDeleteMenu(eventId: string): Promise<Event> {
-  const { data } = await apiClient.delete<ApiEvent>(
-    `/host/events/${encodeURIComponent(eventId)}/menu`
-  )
-  return mapEvent(data)
+  await apiClient.delete(`/host/events/${encodeURIComponent(eventId)}/menu`)
+  return refetchHostEvent(eventId)
 }
 
 export async function backendSetSpotifyPlaylist(
   eventId: string,
   spotifyPlaylistUrl: string
 ): Promise<Event> {
-  const { data } = await apiClient.post<ApiEvent>(
+  await apiClient.post(
     `/host/events/${encodeURIComponent(eventId)}/spotify-playlist`,
     { spotify_playlist_url: spotifyPlaylistUrl }
   )
-  return mapEvent(data)
+  return refetchHostEvent(eventId)
 }
 
 export async function backendDeleteSpotifyPlaylist(eventId: string): Promise<Event> {
-  const { data } = await apiClient.delete<ApiEvent>(
-    `/host/events/${encodeURIComponent(eventId)}/spotify-playlist`
-  )
-  return mapEvent(data)
+  await apiClient.delete(`/host/events/${encodeURIComponent(eventId)}/spotify-playlist`)
+  return refetchHostEvent(eventId)
 }
 
 export async function backendGetOrCreateQrCode(eventId: string): Promise<QrCodeInfo> {
@@ -269,7 +282,7 @@ export async function backendUploadGuestsCsv(eventId: string, file: File): Promi
     `/host/events/${encodeURIComponent(eventId)}/guests/upload-csv`,
     form,
     {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
       validateStatus: (s) => s >= 200 && s < 300,
     }
   )

@@ -34,7 +34,7 @@ export function canHostPublishQr(event: Event): boolean {
 }
 
 export function eventStatusBadgeVariant(
-  status: EventStatus
+  status: EventStatus | undefined
 ): 'active' | 'ended' | 'archived' | 'suspended' | 'default' {
   switch (status) {
     case 'active':
@@ -45,11 +45,13 @@ export function eventStatusBadgeVariant(
       return 'archived'
     case 'cancelled':
       return 'suspended'
+    default:
+      return 'default'
   }
 }
 
 export function approvalBadgeVariant(
-  status: EventApprovalStatus
+  status: EventApprovalStatus | undefined
 ): 'pending' | 'approved' | 'suspended' | 'default' {
   switch (status) {
     case 'pending_payment':
@@ -60,5 +62,7 @@ export function approvalBadgeVariant(
       return 'approved'
     case 'rejected':
       return 'suspended'
+    default:
+      return 'default'
   }
 }

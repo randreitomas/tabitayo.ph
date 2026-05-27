@@ -6,9 +6,11 @@ import { getApiErrorMessage } from '@/lib/api/errors'
 import type {
   Guest,
   CreateGuestInput,
+  GuestNameSuggestion,
   PublicGuestLookupPayload,
   PublicGuestLookupResult,
 } from '@/types/guest'
+import { createGuestFuse, searchGuests } from '@/lib/fuse'
 import { guestFromLookupResult } from '@/lib/api/mappers'
 import type {
   AuthResponse,
@@ -172,6 +174,39 @@ export async function getHostEvent(eventId: string): Promise<Event | null> {
 
   const event = events.find((e) => e.id === eventId) ?? null
   return delay(event)
+}
+
+export async function getPublicGuestSuggestions(
+  lookupToken: string,
+  query: string
+): Promise<GuestNameSuggestion[]> {
+  const q = query.trim()
+  if (q.length < 1) return []
+
+  if (!USE_MOCK) {
+    return backend.backendGetGuestSuggestions(lookupToken, q)
+  }
+
+  const event =
+    events.find(
+      (e) =>
+        e.qrCodeToken === lookupToken ||
+        e.publicSlug === lookupToken ||
+        e.id === lookupToken
+    ) ?? null
+  if (!event || !isEventGuestLive(event)) return []
+
+  const list = guests.filter((g) => g.eventId === event.id)
+  const fuse = createGuestFuse(list)
+  const matches = searchGuests(fuse, q)
+  const unique = new Set<string>()
+  const items: GuestNameSuggestion[] = []
+  for (const guest of matches) {
+    if (unique.has(guest.fullName)) continue
+    unique.add(guest.fullName)
+    items.push({ displayName: guest.fullName })
+  }
+  return delay(items)
 }
 
 export async function publicGuestLookup(

@@ -34,3 +34,8 @@ export interface PublicGuestLookupResult {
   seatNumber?: string
   seatConfirmationStatus?: SeatConfirmationStatus
 }
+
+/** Public autocomplete item — display name only (no guest id). */
+export interface GuestNameSuggestion {
+  displayName: string
+}

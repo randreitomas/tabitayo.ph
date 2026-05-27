@@ -3,9 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvent'
 import { useGuests } from '@/hooks/useGuests'
 import { USE_MOCK } from '@/lib/api/config'
-import type { Guest } from '@/types/guest'
-import type { PublicGuestLookupResult } from '@/types/guest'
-import { NameSearch } from '@/components/guest/NameSearch'
+import type { Guest, PublicGuestLookupResult } from '@/types/guest'
 import { PublicGuestLookup } from '@/components/guest/PublicGuestLookup'
 import { TableBrowse } from '@/components/guest/TableBrowse'
 import { SeatResult } from '@/components/guest/SeatResult'
@@ -97,17 +95,11 @@ export function EventPage() {
 
       <section>
         <h2 className="font-heading text-xl text-center mb-4">Find your seat</h2>
-        {USE_MOCK ? (
-          !guestsLoading && (
-            <NameSearch
-              guests={guests}
-              onSelect={(g) => setSeatResult(guestToLookupResult(g, event.name))}
-            />
-          )
-        ) : (
+        {(!USE_MOCK || !guestsLoading) && (
           <PublicGuestLookup
             lookupToken={token}
             guestLookupMode={event.guestLookupMode}
+            mockGuests={USE_MOCK ? guests : undefined}
             onResult={setSeatResult}
           />
         )}

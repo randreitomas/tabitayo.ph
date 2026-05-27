@@ -2,6 +2,7 @@ import type { Event, CreateEventInput, PhotoShareItem, QrCodeInfo } from '@/type
 import type {
   Guest,
   CreateGuestInput,
+  GuestNameSuggestion,
   PublicGuestLookupPayload,
   PublicGuestLookupResult,
 } from '@/types/guest'
@@ -22,6 +23,7 @@ import {
   mapEvent,
   mapGuest,
   mapGuestLookupResult,
+  mapGuestSuggestions,
   mapHostAccount,
   mapMenuAssetRead,
   mapPublicEvent,
@@ -108,6 +110,25 @@ export async function backendGetPublicEvent(lookupToken: string): Promise<Event 
   } catch (err) {
     if (isApiNotFound(err)) return null
     throw new Error(getApiErrorMessage(err, 'Failed to load event'))
+  }
+}
+
+export async function backendGetGuestSuggestions(
+  lookupToken: string,
+  query: string
+): Promise<GuestNameSuggestion[]> {
+  const q = query.trim()
+  if (!q) return []
+
+  try {
+    const { data } = await apiClient.get(
+      `/public/events/${encodeURIComponent(lookupToken)}/guest-suggestions`,
+      { params: { q } }
+    )
+    return mapGuestSuggestions(data)
+  } catch (err) {
+    if (isApiNotFound(err)) return []
+    throw new Error(getApiErrorMessage(err, 'Could not load name suggestions.'))
   }
 }
 

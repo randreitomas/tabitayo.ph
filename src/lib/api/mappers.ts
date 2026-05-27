@@ -11,6 +11,7 @@ import type {
 import type {
   Guest,
   CreateGuestInput,
+  GuestNameSuggestion,
   PublicGuestLookupResult,
   SeatConfirmationStatus,
 } from '@/types/guest'
@@ -25,6 +26,7 @@ import type {
   ApiMenuAssetRead,
   ApiMenuJson,
   ApiPublicEvent,
+  ApiPublicGuestSuggestionResponse,
   ApiQrCode,
   ApiSeatConfirmResponse,
   ApiUser,
@@ -187,6 +189,10 @@ export function mapGuestLookupResult(dto: ApiGuestLookupResponse): PublicGuestLo
     seatNumber: dto.seat_number ?? undefined,
     seatConfirmationStatus: (dto.seat_confirmation_status as SeatConfirmationStatus) ?? undefined,
   }
+}
+
+export function mapGuestSuggestions(dto: ApiPublicGuestSuggestionResponse): GuestNameSuggestion[] {
+  return dto.items.map((item) => ({ displayName: item.display_name }))
 }
 
 export function guestFromLookupResult(

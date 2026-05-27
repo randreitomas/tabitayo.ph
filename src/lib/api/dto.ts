@@ -112,6 +112,15 @@ export interface ApiSeatConfirmResponse extends ApiGuestLookupResponse {
 /** GET /public/events/{token}/guests/search — same shape as guest lookup */
 export type ApiGuestSearchResult = ApiGuestLookupResponse
 
+export interface ApiPublicGuestSuggestion {
+  display_name: string
+}
+
+export interface ApiPublicGuestSuggestionResponse {
+  items: ApiPublicGuestSuggestion[]
+  limit: number
+}
+
 export interface ApiFloorPlanAssetRead {
   floor_plan_url: string
 }

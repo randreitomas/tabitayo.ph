@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import type { CreateEventInput, EventTier } from '@/types/event'
+import type { CreateEventInput, EventTier, GuestLookupMode } from '@/types/event'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { formatTierPrice } from '@/lib/eventApproval'
@@ -21,10 +21,11 @@ export function EventForm({ onSubmit, loading }: EventFormProps) {
   const [venue, setVenue] = useState('')
   const [tier, setTier] = useState<EventTier>('standard')
   const [photoShareEnabled, setPhotoShareEnabled] = useState(false)
+  const [guestLookupMode, setGuestLookupMode] = useState<GuestLookupMode>('name_only')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    await onSubmit({ name, date, venue, tier, photoShareEnabled })
+    await onSubmit({ name, date, venue, tier, photoShareEnabled, guestLookupMode })
   }
 
   return (
@@ -64,6 +65,50 @@ export function EventForm({ onSubmit, loading }: EventFormProps) {
               <div>
                 <span className="font-heading text-lg">{t.label}</span>
                 <p className="text-xs text-muted">{t.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend className="text-xs text-muted mb-2 block">How guests find their seat</legend>
+        <div className="space-y-2">
+          {(
+            [
+              { value: 'name_only' as const, label: 'Name only', desc: 'Guests search by full name' },
+              {
+                value: 'invite_code' as const,
+                label: 'Name + invite code',
+                desc: 'Guests enter name and a code from their invitation',
+              },
+              {
+                value: 'personal_token' as const,
+                label: 'Personal code',
+                desc: 'Each guest uses a unique code (from CSV import)',
+              },
+            ] as const
+          ).map((m) => (
+            <label
+              key={m.value}
+              className={[
+                'flex items-start gap-3 p-3 border rounded-sm cursor-pointer transition-colors',
+                guestLookupMode === m.value
+                  ? 'border-dark bg-border/30'
+                  : 'border-border hover:bg-border/20',
+              ].join(' ')}
+            >
+              <input
+                type="radio"
+                name="guestLookupMode"
+                value={m.value}
+                checked={guestLookupMode === m.value}
+                onChange={() => setGuestLookupMode(m.value)}
+                className="mt-1"
+              />
+              <div>
+                <span className="font-heading text-base">{m.label}</span>
+                <p className="text-xs text-muted">{m.desc}</p>
               </div>
             </label>
           ))}

@@ -16,8 +16,10 @@ export function QRPage() {
       </Link>
       <h1 className="font-heading text-3xl">QR Code</h1>
       <QRDisplay
-        publicSlug={event.publicSlug ?? event.id}
+        eventId={event.id}
         eventName={event.name}
+        initialToken={event.qrCodeToken}
+        initialPayload={event.qrCodePayload}
       />
     </div>
   )

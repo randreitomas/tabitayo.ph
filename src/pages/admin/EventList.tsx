@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react'
 import { getAllHosts, getAllEvents, approveEvent, rejectEvent, updateEvent } from '@/lib/api'
 import type { Event, EventStatus } from '@/types/event'
 import type { HostAccount } from '@/types/user'
-import { APPROVAL_LABELS, approvalBadgeVariant, formatTierPrice } from '@/lib/eventApproval'
+import {
+  APPROVAL_LABELS,
+  approvalBadgeVariant,
+  eventStatusBadgeVariant,
+  formatTierPrice,
+} from '@/lib/eventApproval'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -112,7 +117,7 @@ export function AdminEventList() {
                     <Badge variant={approvalBadgeVariant(event.approvalStatus)}>
                       {APPROVAL_LABELS[event.approvalStatus]}
                     </Badge>
-                    <Badge variant={event.status}>{event.status}</Badge>
+                    <Badge variant={eventStatusBadgeVariant(event.status)}>{event.status}</Badge>
                     <Badge>{event.tier}</Badge>
                     <Badge>{formatTierPrice(event.tier)}</Badge>
                   </div>

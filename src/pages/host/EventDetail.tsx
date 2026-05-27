@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvent'
-import { updateEvent, getEventPhotos, updatePhotoStatus } from '@/lib/api'
+import {
+  updateEvent,
+  getEventPhotos,
+  updatePhotoStatus,
+  setEventSpotifyPlaylist,
+  clearEventSpotifyPlaylist,
+} from '@/lib/api'
 import { USE_MOCK } from '@/lib/api/config'
 import type { PhotoShareItem } from '@/types/event'
 import { Tabs, type TabItem } from '@/components/ui/Tabs'
@@ -11,9 +17,15 @@ import { Input } from '@/components/ui/Input'
 import { FloorPlanEditor } from '@/components/host/FloorPlanEditor'
 import { MenuEditor } from '@/components/host/MenuEditor'
 import { QRDisplay } from '@/components/host/QRDisplay'
+import { EventSetupChecklist } from '@/components/host/EventSetupChecklist'
 import { GuestManager } from './GuestManager'
 import { EventApprovalBanner } from '@/components/host/EventApprovalBanner'
-import { APPROVAL_LABELS, approvalBadgeVariant, canHostPublishQr } from '@/lib/eventApproval'
+import {
+  APPROVAL_LABELS,
+  approvalBadgeVariant,
+  canHostPublishQr,
+  eventStatusBadgeVariant,
+} from '@/lib/eventApproval'
 
 export function EventDetail() {
   const { id } = useParams<{ id: string }>()
@@ -46,7 +58,9 @@ export function EventDetail() {
     {
       id: 'guests',
       label: 'Guests',
-      content: <GuestManager eventId={event.id} />,
+      content: (
+        <GuestManager eventId={event.id} guestLookupMode={event.guestLookupMode} />
+      ),
     },
     {
       id: 'floor',
@@ -69,9 +83,28 @@ export function EventDetail() {
             onChange={(e) => setSpotifyDraft(e.target.value)}
             hint="Use the embed URL from Spotify share menu"
           />
-          <Button onClick={() => saveEventPatch({ spotifyUrl: spotifyDraft })}>
-            Save playlist
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={async () => {
+                const updated = await setEventSpotifyPlaylist(event.id, spotifyDraft.trim())
+                setEvent(updated)
+              }}
+            >
+              Save playlist
+            </Button>
+            {event.spotifyUrl && (
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  const updated = await clearEventSpotifyPlaylist(event.id)
+                  setEvent(updated)
+                  setSpotifyDraft('')
+                }}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
         </div>
       ),
     },
@@ -134,8 +167,10 @@ export function EventDetail() {
       label: 'QR Code',
       content: canHostPublishQr(event) ? (
         <QRDisplay
-          publicSlug={event.publicSlug ?? event.id}
+          eventId={event.id}
           eventName={event.name}
+          initialToken={event.qrCodeToken}
+          initialPayload={event.qrCodePayload}
         />
       ) : (
         <p className="text-sm text-muted text-center py-8">
@@ -162,8 +197,11 @@ export function EventDetail() {
             <Badge variant={approvalBadgeVariant(event.approvalStatus)}>
               {APPROVAL_LABELS[event.approvalStatus]}
             </Badge>
-            <Badge variant={event.status}>{event.status}</Badge>
+            <Badge variant={eventStatusBadgeVariant(event.status)}>{event.status}</Badge>
             <Badge>{event.tier}</Badge>
+          </div>
+          <div className="mt-3">
+            <EventSetupChecklist setup={event.setup} />
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -179,7 +217,7 @@ export function EventDetail() {
           )}
           {canHostPublishQr(event) && (
             <Link
-              to={`/e/${event.publicSlug ?? event.id}`}
+              to={`/e/${event.qrCodeToken ?? event.publicSlug ?? event.id}`}
               target="_blank"
               rel="noreferrer"
             >

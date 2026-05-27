@@ -8,7 +8,8 @@ import {
   normalizeMenu,
   sanitizeMenu,
 } from '@/lib/menu'
-import { uploadEventMenuImage, updateEvent } from '@/lib/api'
+import { uploadEventMenuImage, updateEvent, deleteEventMenu } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/api/mediaUrl'
 import { Button } from '@/components/ui/Button'
 
 /** Public Canva template gallery — hosts can duplicate and customize */
@@ -104,9 +105,11 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
 
   const removeMenuImage = async () => {
     setError(null)
-    const updated = await updateEvent(event.id, { menuImageUrl: undefined })
+    const updated = await deleteEventMenu(event.id)
     onUpdated(updated)
   }
+
+  const menuImageSrc = resolveMediaUrl(event.menuImageUrl)
 
   return (
     <div className="space-y-5 max-w-lg">
@@ -206,7 +209,7 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
             <p className="text-xs text-muted mt-2">JPG or PNG · max 5 MB</p>
           </div>
 
-          {event.menuImageUrl && (
+          {menuImageSrc && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted uppercase tracking-wide">Current menu</p>
@@ -215,7 +218,7 @@ export function MenuEditor({ event, onUpdated }: MenuEditorProps) {
                 </Button>
               </div>
               <img
-                src={event.menuImageUrl}
+                src={menuImageSrc}
                 alt={`Menu for ${event.name}`}
                 className="w-full rounded-sm border border-border object-contain max-h-96"
               />

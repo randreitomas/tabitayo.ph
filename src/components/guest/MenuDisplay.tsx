@@ -1,5 +1,6 @@
 import type { EventMenu } from '@/types/event'
 import { getMenuCourses } from '@/lib/menu'
+import { resolveMediaUrl } from '@/lib/api/mediaUrl'
 
 interface MenuDisplayProps {
   menu?: EventMenu
@@ -7,12 +8,13 @@ interface MenuDisplayProps {
 }
 
 export function MenuDisplay({ menu, menuImageUrl }: MenuDisplayProps) {
-  if (menuImageUrl) {
+  const menuSrc = resolveMediaUrl(menuImageUrl)
+  if (menuSrc) {
     return (
       <div>
         <h3 className="font-heading text-xl text-center mb-4">Menu</h3>
         <img
-          src={menuImageUrl}
+          src={menuSrc}
           alt="Event menu"
           className="w-full rounded-sm border border-border object-contain max-h-[28rem] mx-auto"
         />

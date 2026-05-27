@@ -18,10 +18,19 @@ export const MOCK_ADMIN: User = {
   displayName: 'Tabitayo Admin',
 }
 
+const defaultSetup = {
+  hasMenu: false,
+  hasFloorPlan: false,
+  hasSpotifyPlaylist: false,
+  hasQrCode: false,
+} as const
+
 export const MOCK_EVENTS: Event[] = [
   {
     id: 'evt-demo',
     publicSlug: 'evt-demo',
+    qrCodeToken: 'evt-demo',
+    qrCodePayload: '/e/evt-demo',
     hostId: 'host-1',
     name: 'Santos–Reyes Wedding',
     date: '2026-06-14',
@@ -29,7 +38,14 @@ export const MOCK_EVENTS: Event[] = [
     tier: 'premium',
     status: 'active',
     approvalStatus: 'approved',
+    guestLookupMode: 'name_only',
     approvedAt: '2026-05-01T10:00:00.000Z',
+    setup: {
+      hasMenu: true,
+      hasFloorPlan: true,
+      hasSpotifyPlaylist: true,
+      hasQrCode: true,
+    },
     floorPlanUrl:
       'https://images.unsplash.com/photo-1519167758481-83f550bb49b8?w=800&q=80',
     menuDisplayMode: 'text',
@@ -52,7 +68,9 @@ export const MOCK_EVENTS: Event[] = [
     tier: 'standard',
     status: 'ended',
     approvalStatus: 'approved',
+    guestLookupMode: 'name_only',
     photoShareEnabled: false,
+    setup: { ...defaultSetup },
   },
   {
     id: 'evt-pending',
@@ -63,8 +81,10 @@ export const MOCK_EVENTS: Event[] = [
     tier: 'standard',
     status: 'active',
     approvalStatus: 'payment_submitted',
+    guestLookupMode: 'name_only',
     paymentSubmittedAt: '2026-05-25T14:00:00.000Z',
     photoShareEnabled: false,
+    setup: { ...defaultSetup },
   },
   {
     id: 'evt-2',
@@ -75,9 +95,11 @@ export const MOCK_EVENTS: Event[] = [
     tier: 'premium',
     status: 'active',
     approvalStatus: 'payment_submitted',
+    guestLookupMode: 'invite_code',
     paymentSubmittedAt: '2026-05-26T08:30:00.000Z',
     photoShareEnabled: true,
     customBranding: { primaryColor: '#e8c97a', logoUrl: '' },
+    setup: { ...defaultSetup },
   },
 ]
 

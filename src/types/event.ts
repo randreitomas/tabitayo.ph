@@ -1,5 +1,7 @@
 export type EventTier = 'free' | 'standard' | 'premium'
-export type EventStatus = 'active' | 'ended' | 'archived'
+export type EventStatus = 'active' | 'ended' | 'archived' | 'cancelled'
+
+export type GuestLookupMode = 'name_only' | 'invite_code' | 'personal_token'
 
 /** Manual payment + admin review before the guest page goes live */
 export type EventApprovalStatus =
@@ -17,10 +19,21 @@ export interface EventMenu {
 /** How the menu is shown to guests — hosts pick one, not both */
 export type MenuDisplayMode = 'text' | 'image'
 
+export interface EventSetup {
+  hasMenu: boolean
+  hasFloorPlan: boolean
+  hasSpotifyPlaylist: boolean
+  hasQrCode: boolean
+}
+
 export interface Event {
   id: string
-  /** Public guest URL segment (`/e/:slug`) */
+  /** Legacy public slug (compat); guest QR uses qrCodeToken */
   publicSlug?: string
+  /** Token for `/e/:lookupToken` and public API */
+  qrCodeToken?: string
+  /** e.g. `/e/{token}` from POST /qr-code */
+  qrCodePayload?: string
   hostId: string
   name: string
   date: string
@@ -28,6 +41,7 @@ export interface Event {
   tier: EventTier
   status: EventStatus
   approvalStatus: EventApprovalStatus
+  guestLookupMode: GuestLookupMode
   paymentSubmittedAt?: string
   approvedAt?: string
   rejectedAt?: string
@@ -39,6 +53,7 @@ export interface Event {
   spotifyUrl?: string
   photoShareEnabled: boolean
   customBranding?: { primaryColor: string; logoUrl: string }
+  setup?: EventSetup
 }
 
 export interface CreateEventInput {
@@ -47,6 +62,7 @@ export interface CreateEventInput {
   venue: string
   tier: EventTier
   photoShareEnabled: boolean
+  guestLookupMode?: GuestLookupMode
 }
 
 export interface PhotoShareItem {
@@ -56,4 +72,11 @@ export interface PhotoShareItem {
   caption?: string
   status: 'pending' | 'approved' | 'rejected'
   uploadedAt: string
+}
+
+export interface QrCodeInfo {
+  eventId: string
+  qrCodeToken: string
+  qrCodePayload: string
+  publicGuestPagePath: string
 }

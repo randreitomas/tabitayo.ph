@@ -3,7 +3,11 @@ import { Link } from 'react-router-dom'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { getHostEvents } from '@/lib/api'
 import type { Event } from '@/types/event'
-import { APPROVAL_LABELS, approvalBadgeVariant } from '@/lib/eventApproval'
+import {
+  APPROVAL_LABELS,
+  approvalBadgeVariant,
+  eventStatusBadgeVariant,
+} from '@/lib/eventApproval'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -48,7 +52,7 @@ export function HostDashboard() {
                       <Badge variant={approvalBadgeVariant(event.approvalStatus)}>
                         {APPROVAL_LABELS[event.approvalStatus]}
                       </Badge>
-                      <Badge variant={event.status}>{event.status}</Badge>
+                      <Badge variant={eventStatusBadgeVariant(event.status)}>{event.status}</Badge>
                     </div>
                   </div>
                   <p className="text-xs text-muted">

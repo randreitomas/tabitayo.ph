@@ -5,6 +5,10 @@
       "destination": "https://tabitayo-backend.onrender.com/api/v1/:path*"
     },
     {
+      "source": "/media/:path*",
+      "destination": "https://tabitayo-backend.onrender.com/media/:path*"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

@@ -1,17 +1,25 @@
-import type { Event, CreateEventInput, PhotoShareItem } from '@/types/event'
-import type { Guest, CreateGuestInput } from '@/types/guest'
+import type { Event, CreateEventInput, PhotoShareItem, QrCodeInfo } from '@/types/event'
+import type {
+  Guest,
+  CreateGuestInput,
+  PublicGuestLookupPayload,
+  PublicGuestLookupResult,
+} from '@/types/guest'
 import type { HostAccount, LoginInput, RegisterInput, User } from '@/types/user'
 import type { ActivityLog, ActivityLogFilters } from '@/types/activityLog'
 import { apiClient } from './client'
 import { getApiErrorMessage, isApiNotFound } from './errors'
-import type { ApiAuthResponse, ApiEvent, ApiGuestSearchResult, ApiPaymentSubmission } from './dto'
+import type { ApiAuthResponse, ApiEvent, ApiPaymentSubmission, ApiQrCode } from './dto'
 import {
   guestFromSearchResult,
   mapAuthResponse,
   mapEvent,
   mapGuest,
+  mapGuestLookupResult,
   mapHostAccount,
   mapPublicEvent,
+  mapQrCode,
+  mapSeatConfirm,
   mapUser,
   toCreateEventBody,
   toCreateGuestBody,
@@ -27,6 +35,17 @@ function unwrapList<T>(data: unknown, key?: string): T[] {
   }
   const obj = data as { items?: T[] }
   return obj.items ?? []
+}
+
+async function uploadMultipart(eventId: string, path: string, file: File): Promise<Event> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await apiClient.post<ApiEvent>(
+    `/host/events/${encodeURIComponent(eventId)}${path}`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
+  return mapEvent(data)
 }
 
 // ——— Auth ———
@@ -47,7 +66,7 @@ export async function backendRegister(input: RegisterInput) {
       password: input.password,
       display_name: input.displayName,
     },
-    { validateStatus: (status) => status >= 200 && status < 300 }
+    { validateStatus: (s) => s >= 200 && s < 300 }
   )
   return mapAuthResponse(data)
 }
@@ -63,44 +82,77 @@ export async function backendGetCurrentUser(): Promise<User | null> {
 }
 
 export async function backendRecordLogout(): Promise<void> {
-  /* No logout endpoint in MVP contract */
+  /* No logout endpoint */
 }
 
-// ——— Public ———
+// ——— Public (no auth) ———
 
-export async function backendGetPublicEvent(publicSlug: string): Promise<Event | null> {
+export async function backendGetPublicEvent(lookupToken: string): Promise<Event | null> {
   try {
-    const { data } = await apiClient.get(`/public/events/${encodeURIComponent(publicSlug)}`)
-    return mapPublicEvent(data, publicSlug)
+    const { data } = await apiClient.get(
+      `/public/events/${encodeURIComponent(lookupToken)}`
+    )
+    return mapPublicEvent(data, lookupToken)
   } catch (err) {
     if (isApiNotFound(err)) return null
     throw new Error(getApiErrorMessage(err, 'Failed to load event'))
   }
 }
 
-export async function backendSearchPublicGuest(
-  publicSlug: string,
-  name: string
-): Promise<{ event: Event; guest: Guest } | null> {
+export async function backendPublicGuestLookup(
+  lookupToken: string,
+  payload: PublicGuestLookupPayload
+): Promise<PublicGuestLookupResult | null> {
   try {
-    const { data } = await apiClient.get<ApiGuestSearchResult>(
-      `/public/events/${encodeURIComponent(publicSlug)}/guests/search`,
+    const { data } = await apiClient.post(
+      `/public/events/${encodeURIComponent(lookupToken)}/guest-lookup`,
+      payload
+    )
+    return mapGuestLookupResult(data)
+  } catch (err) {
+    if (isApiNotFound(err)) return null
+    throw new Error(getApiErrorMessage(err, 'Could not find your seat. Check your details.'))
+  }
+}
+
+/** Legacy GET search — fallback */
+export async function backendSearchPublicGuestLegacy(
+  lookupToken: string,
+  name: string
+): Promise<PublicGuestLookupResult | null> {
+  try {
+    const { data } = await apiClient.get(
+      `/public/events/${encodeURIComponent(lookupToken)}/guests/search`,
       { params: { name: name.trim() } }
     )
-    const event = mapPublicEvent(data, publicSlug)
-    const guest = guestFromSearchResult(data, publicSlug)
-    return { event, guest }
+    return {
+      guestId: `legacy-${lookupToken}`,
+      eventName: data.event_name,
+      guestName: data.guest_name,
+      tableNumber: data.table_number,
+      seatNumber: data.seat_number ?? undefined,
+    }
   } catch (err) {
     if (isApiNotFound(err)) return null
     throw new Error(getApiErrorMessage(err, 'Search failed'))
   }
 }
 
+export async function backendConfirmSeatFound(
+  lookupToken: string,
+  guestId: string
+): Promise<PublicGuestLookupResult> {
+  const { data } = await apiClient.patch(
+    `/public/events/${encodeURIComponent(lookupToken)}/guests/${encodeURIComponent(guestId)}/seat-found`
+  )
+  return mapSeatConfirm(data)
+}
+
 // ——— Host events ———
 
 export async function backendGetHostEvents(): Promise<Event[]> {
-  const { data } = await apiClient.get('/host/events')
-  return unwrapList<ApiEvent>(data, 'events').map(mapEvent)
+  const { data } = await apiClient.get('/host/events', { params: { limit: 50, offset: 0 } })
+  return unwrapList<ApiEvent>(data).map(mapEvent)
 }
 
 export async function backendGetHostEvent(eventId: string): Promise<Event | null> {
@@ -116,7 +168,9 @@ export async function backendGetHostEvent(eventId: string): Promise<Event | null
 }
 
 export async function backendCreateEvent(input: CreateEventInput): Promise<Event> {
-  const { data } = await apiClient.post<ApiEvent>('/host/events', toCreateEventBody(input))
+  const { data } = await apiClient.post<ApiEvent>('/host/events', toCreateEventBody(input), {
+    validateStatus: (s) => s >= 200 && s < 300,
+  })
   return mapEvent(data)
 }
 
@@ -132,6 +186,63 @@ export async function backendDeleteEvent(eventId: string): Promise<void> {
   await apiClient.delete(`/host/events/${encodeURIComponent(eventId)}`)
 }
 
+// ——— Host assets ———
+
+export async function backendUploadFloorPlan(eventId: string, file: File): Promise<Event> {
+  return uploadMultipart(eventId, '/floor-plan', file)
+}
+
+export async function backendDeleteFloorPlan(eventId: string): Promise<Event> {
+  const { data } = await apiClient.delete<ApiEvent>(
+    `/host/events/${encodeURIComponent(eventId)}/floor-plan`
+  )
+  return mapEvent(data)
+}
+
+export async function backendUploadMenu(eventId: string, file: File): Promise<Event> {
+  return uploadMultipart(eventId, '/menu', file)
+}
+
+export async function backendDeleteMenu(eventId: string): Promise<Event> {
+  const { data } = await apiClient.delete<ApiEvent>(
+    `/host/events/${encodeURIComponent(eventId)}/menu`
+  )
+  return mapEvent(data)
+}
+
+export async function backendSetSpotifyPlaylist(
+  eventId: string,
+  spotifyPlaylistUrl: string
+): Promise<Event> {
+  const { data } = await apiClient.post<ApiEvent>(
+    `/host/events/${encodeURIComponent(eventId)}/spotify-playlist`,
+    { spotify_playlist_url: spotifyPlaylistUrl }
+  )
+  return mapEvent(data)
+}
+
+export async function backendDeleteSpotifyPlaylist(eventId: string): Promise<Event> {
+  const { data } = await apiClient.delete<ApiEvent>(
+    `/host/events/${encodeURIComponent(eventId)}/spotify-playlist`
+  )
+  return mapEvent(data)
+}
+
+export async function backendGetOrCreateQrCode(eventId: string): Promise<QrCodeInfo> {
+  try {
+    const { data } = await apiClient.get<ApiQrCode>(
+      `/host/events/${encodeURIComponent(eventId)}/qr-code`
+    )
+    return mapQrCode(data)
+  } catch (err) {
+    if (!isApiNotFound(err)) throw err
+    const { data } = await apiClient.post<ApiQrCode>(
+      `/host/events/${encodeURIComponent(eventId)}/qr-code`
+    )
+    return mapQrCode(data)
+  }
+}
+
 // ——— Host guests ———
 
 export async function backendGetEventGuests(eventId: string): Promise<Guest[]> {
@@ -145,7 +256,8 @@ export async function backendGetEventGuests(eventId: string): Promise<Guest[]> {
 export async function backendAddGuest(eventId: string, input: CreateGuestInput): Promise<Guest> {
   const { data } = await apiClient.post(
     `/host/events/${encodeURIComponent(eventId)}/guests`,
-    toCreateGuestBody(input)
+    toCreateGuestBody(input),
+    { validateStatus: (s) => s >= 200 && s < 300 }
   )
   return mapGuest(data)
 }
@@ -156,7 +268,10 @@ export async function backendUploadGuestsCsv(eventId: string, file: File): Promi
   const { data } = await apiClient.post(
     `/host/events/${encodeURIComponent(eventId)}/guests/upload-csv`,
     form,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      validateStatus: (s) => s >= 200 && s < 300,
+    }
   )
   const guests = (data as { guests?: unknown }).guests
   return unwrapGuestList(guests ?? data).map(mapGuest)
@@ -171,8 +286,8 @@ export async function backendDeleteGuest(eventId: string, guestId: string): Prom
 // ——— Admin ———
 
 export async function backendGetAdminUsers(): Promise<HostAccount[]> {
-  const { data } = await apiClient.get('/admin/users')
-  const users = unwrapList<import('./dto').ApiUser>(data, 'users')
+  const { data } = await apiClient.get('/admin/users', { params: { role: 'host', limit: 50 } })
+  const users = unwrapList<import('./dto').ApiUser>(data)
   const hosts = users.filter((u) => u.role === 'host')
   const events = await backendGetAdminEvents()
   const countByHost = new Map<string, number>()
@@ -183,13 +298,13 @@ export async function backendGetAdminUsers(): Promise<HostAccount[]> {
 }
 
 export async function backendGetAdminEvents(): Promise<Event[]> {
-  const { data } = await apiClient.get('/admin/events')
-  return unwrapList<ApiEvent>(data, 'events').map(mapEvent)
+  const { data } = await apiClient.get('/admin/events', { params: { limit: 50, offset: 0 } })
+  return unwrapList<ApiEvent>(data).map(mapEvent)
 }
 
 async function backendListPaymentSubmissions(): Promise<ApiPaymentSubmission[]> {
   const { data } = await apiClient.get('/admin/payment-submissions')
-  return unwrapList<ApiPaymentSubmission>(data, 'payment_submissions')
+  return unwrapList<ApiPaymentSubmission>(data)
 }
 
 export async function backendApproveEvent(eventId: string): Promise<Event> {
@@ -238,22 +353,17 @@ export async function backendUpdateHostStatus(
   throw new Error('Host account status changes are not supported by the API yet.')
 }
 
-// ——— Not in MVP contract (stubs) ———
-
 export async function backendSubmitEventPayment(eventId: string): Promise<Event> {
-  return backendUpdateEvent(eventId, {
-    approvalStatus: 'payment_submitted',
-    paymentSubmittedAt: new Date().toISOString(),
-  } as Partial<Event>)
+  return backendUpdateEvent(eventId, { approvalStatus: 'payment_submitted' })
 }
 
 export async function backendGetActivityLogs(
-  _filters: ActivityLogFilters = {}
+  _filters?: ActivityLogFilters
 ): Promise<ActivityLog[]> {
   return []
 }
 
-export async function backendGetApprovedPhotos(_eventId: string): Promise<PhotoShareItem[]> {
+export async function backendGetApprovedPhotos(_eventId?: string): Promise<PhotoShareItem[]> {
   return []
 }
 
@@ -261,10 +371,16 @@ export async function backendUploadGuestPhoto(): Promise<PhotoShareItem> {
   throw new Error('Photo share is not available on the API yet.')
 }
 
-export async function backendGetEventPhotos(_eventId: string): Promise<PhotoShareItem[]> {
+export async function backendGetEventPhotos(_eventId?: string): Promise<PhotoShareItem[]> {
   return []
 }
 
-export async function backendUpdatePhotoStatus(): Promise<PhotoShareItem> {
+export async function backendUpdatePhotoStatus(
+  _photoId?: string,
+  _status?: PhotoShareItem['status']
+): Promise<PhotoShareItem> {
   throw new Error('Photo share is not available on the API yet.')
 }
+
+// Re-export for legacy search typing
+export { guestFromSearchResult }

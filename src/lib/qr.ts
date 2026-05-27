@@ -6,16 +6,20 @@ function guestBaseUrl(): string {
     : (import.meta.env.VITE_APP_URL ?? 'https://tabitayo.ph')
 }
 
-/** Guest page URL uses `public_slug` from the API (falls back to internal id in mock). */
-export function getEventGuestUrl(publicSlug: string): string {
-  return `${guestBaseUrl()}/e/${publicSlug}`
+/** Full guest page URL from API token or payload path. */
+export function getEventGuestUrl(qrCodeToken: string, qrCodePayload?: string): string {
+  if (qrCodePayload?.startsWith('http')) return qrCodePayload
+  const path = qrCodePayload?.startsWith('/')
+    ? qrCodePayload
+    : `/e/${qrCodeToken}`
+  return `${guestBaseUrl()}${path}`
 }
 
 export async function generateEventQR(
-  publicSlug: string,
-  options?: { width?: number; margin?: number }
+  qrCodeToken: string,
+  options?: { width?: number; margin?: number; qrCodePayload?: string }
 ): Promise<string> {
-  const url = getEventGuestUrl(publicSlug)
+  const url = getEventGuestUrl(qrCodeToken, options?.qrCodePayload)
 
   return QRCode.toDataURL(url, {
     width: options?.width ?? 280,

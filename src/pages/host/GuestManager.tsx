@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGuests } from '@/hooks/useGuests'
 import { addGuest, uploadGuestsCsv, deleteGuest } from '@/lib/api'
 import type { CreateGuestInput } from '@/types/guest'
+import type { GuestLookupMode } from '@/types/event'
 import { GuestTable } from '@/components/host/GuestTable'
 import { GuestUpload } from '@/components/host/GuestUpload'
 import { Input } from '@/components/ui/Input'
@@ -10,16 +11,18 @@ import { Modal } from '@/components/ui/Modal'
 
 interface GuestManagerProps {
   eventId: string
+  guestLookupMode?: GuestLookupMode
 }
 
-export function GuestManager({ eventId }: GuestManagerProps) {
+export function GuestManager({ eventId, guestLookupMode = 'name_only' }: GuestManagerProps) {
   const { guests, refresh } = useGuests(eventId)
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState<CreateGuestInput>({
+  const [form, setForm] = useState<CreateGuestInput & { inviteCode?: string }>({
     fullName: '',
     alias: '',
     tableNumber: '',
     seatNumber: '',
+    inviteCode: '',
   })
 
   const handleAdd = async () => {
@@ -28,9 +31,11 @@ export function GuestManager({ eventId }: GuestManagerProps) {
       alias: form.alias || undefined,
       tableNumber: form.tableNumber,
       seatNumber: form.seatNumber || undefined,
+      inviteCode:
+        guestLookupMode === 'invite_code' ? form.inviteCode?.trim() || undefined : undefined,
     })
     setModalOpen(false)
-    setForm({ fullName: '', alias: '', tableNumber: '', seatNumber: '' })
+    setForm({ fullName: '', alias: '', tableNumber: '', seatNumber: '', inviteCode: '' })
     refresh()
   }
 
@@ -93,6 +98,16 @@ export function GuestManager({ eventId }: GuestManagerProps) {
             value={form.seatNumber}
             onChange={(e) => setForm({ ...form, seatNumber: e.target.value })}
           />
+          {guestLookupMode === 'invite_code' && (
+            <Input
+              label="Invite code"
+              value={form.inviteCode ?? ''}
+              onChange={(e) =>
+                setForm({ ...form, inviteCode: e.target.value.toUpperCase() })
+              }
+              required
+            />
+          )}
         </div>
       </Modal>
     </div>

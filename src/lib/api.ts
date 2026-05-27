@@ -1,9 +1,15 @@
 import Papa from 'papaparse'
-import type { Event, CreateEventInput, PhotoShareItem } from '@/types/event'
+import type { Event, CreateEventInput, PhotoShareItem, QrCodeInfo } from '@/types/event'
 import { USE_MOCK } from '@/lib/api/config'
 import * as backend from '@/lib/api/backend'
 import { getApiErrorMessage } from '@/lib/api/errors'
-import type { Guest, CreateGuestInput } from '@/types/guest'
+import type {
+  Guest,
+  CreateGuestInput,
+  PublicGuestLookupPayload,
+  PublicGuestLookupResult,
+} from '@/types/guest'
+import { guestFromLookupResult } from '@/lib/api/mappers'
 import type {
   AuthResponse,
   HostAccount,
@@ -142,14 +148,19 @@ export async function getCurrentUser(): Promise<User | null> {
 
 // ——— Events (public) ———
 
-/** Public guest page — `eventId` route param is the event `public_slug`. */
-export async function getEvent(publicSlug: string): Promise<Event | null> {
+/** Public guest page — route param is `qr_code_token` (or legacy public_slug). */
+export async function getEvent(lookupToken: string): Promise<Event | null> {
   if (!USE_MOCK) {
-    return backend.backendGetPublicEvent(publicSlug)
+    return backend.backendGetPublicEvent(lookupToken)
   }
 
   const event =
-    events.find((e) => e.publicSlug === publicSlug || e.id === publicSlug) ?? null
+    events.find(
+      (e) =>
+        e.qrCodeToken === lookupToken ||
+        e.publicSlug === lookupToken ||
+        e.id === lookupToken
+    ) ?? null
   return delay(event)
 }
 
@@ -163,27 +174,96 @@ export async function getHostEvent(eventId: string): Promise<Event | null> {
   return delay(event)
 }
 
-export async function searchPublicGuest(
-  publicSlug: string,
-  name: string
-): Promise<{ event: Event; guest: Guest } | null> {
+export async function publicGuestLookup(
+  lookupToken: string,
+  payload: PublicGuestLookupPayload
+): Promise<PublicGuestLookupResult | null> {
   if (!USE_MOCK) {
-    return backend.backendSearchPublicGuest(publicSlug, name)
+    try {
+      return await backend.backendPublicGuestLookup(lookupToken, payload)
+    } catch {
+      if ('name' in payload && typeof payload.name === 'string') {
+        return backend.backendSearchPublicGuestLegacy(lookupToken, payload.name)
+      }
+      return null
+    }
   }
 
   const event =
-    events.find((e) => e.publicSlug === publicSlug || e.id === publicSlug) ?? null
+    events.find(
+      (e) =>
+        e.qrCodeToken === lookupToken ||
+        e.publicSlug === lookupToken ||
+        e.id === lookupToken
+    ) ?? null
   if (!event || !isEventGuestLive(event)) return null
 
   const list = guests.filter((g) => g.eventId === event.id)
-  const q = name.trim().toLowerCase()
-  const match =
-    list.find((g) => g.fullName.toLowerCase() === q) ??
-    list.find((g) => g.fullName.toLowerCase().includes(q)) ??
-    list.find((g) => g.alias?.toLowerCase().includes(q))
+  let match: Guest | undefined
+
+  if ('lookup_token' in payload) {
+    match = list.find((g) => g.lookupToken === payload.lookup_token)
+  } else if ('invite_code' in payload && 'name' in payload) {
+    const q = payload.name.trim().toLowerCase()
+    match = list.find(
+      (g) =>
+        g.fullName.toLowerCase().includes(q) &&
+        g.inviteCode?.toUpperCase() === payload.invite_code.toUpperCase()
+    )
+  } else if ('name' in payload) {
+    const q = payload.name.trim().toLowerCase()
+    match =
+      list.find((g) => g.fullName.toLowerCase() === q) ??
+      list.find((g) => g.fullName.toLowerCase().includes(q))
+  }
 
   if (!match) return null
-  return delay({ event, guest: match })
+  return delay({
+    guestId: match.id,
+    eventName: event.name,
+    guestName: match.fullName,
+    tableNumber: match.tableNumber,
+    seatNumber: match.seatNumber,
+    seatConfirmationStatus: match.seatConfirmationStatus,
+  })
+}
+
+export async function confirmSeatFound(
+  lookupToken: string,
+  guestId: string
+): Promise<PublicGuestLookupResult> {
+  if (!USE_MOCK) {
+    return backend.backendConfirmSeatFound(lookupToken, guestId)
+  }
+
+  const idx = guests.findIndex((g) => g.id === guestId)
+  if (idx === -1) throw new Error('Guest not found')
+  guests[idx] = {
+    ...guests[idx],
+    seatConfirmationStatus: 'seat_found',
+    seatConfirmedAt: new Date().toISOString(),
+  }
+  const event = events.find((e) => e.id === guests[idx].eventId)!
+  return delay({
+    guestId: guests[idx].id,
+    eventName: event.name,
+    guestName: guests[idx].fullName,
+    tableNumber: guests[idx].tableNumber,
+    seatNumber: guests[idx].seatNumber,
+    seatConfirmationStatus: 'seat_found',
+  })
+}
+
+/** @deprecated Use publicGuestLookup */
+export async function searchPublicGuest(
+  lookupToken: string,
+  name: string
+): Promise<{ event: Event; guest: Guest } | null> {
+  const result = await publicGuestLookup(lookupToken, { name })
+  if (!result) return null
+  const event = await getEvent(lookupToken)
+  if (!event) return null
+  return { event, guest: guestFromLookupResult(result, lookupToken) }
 }
 
 export async function getEventGuests(eventId: string): Promise<Guest[]> {
@@ -249,10 +329,19 @@ export async function createEvent(
   const event: Event = {
     id,
     publicSlug: id,
+    qrCodeToken: id,
+    qrCodePayload: `/e/${id}`,
     hostId,
     ...input,
+    guestLookupMode: input.guestLookupMode ?? 'name_only',
     status: 'active',
     approvalStatus: 'pending_payment',
+    setup: {
+      hasMenu: false,
+      hasFloorPlan: false,
+      hasSpotifyPlaylist: false,
+      hasQrCode: false,
+    },
   }
   events = [...events, event]
 
@@ -269,8 +358,7 @@ export async function createEvent(
 export async function uploadEventFloorPlan(eventId: string, file: File): Promise<Event> {
   if (!USE_MOCK) {
     if (!isUploadableImage(file)) throw new Error('Invalid file type')
-    const dataUrl = await readImageAsDataUrl(file)
-    return backend.backendUpdateEvent(eventId, { floorPlanUrl: dataUrl })
+    return backend.backendUploadFloorPlan(eventId, file)
   }
 
   if (!isUploadableImage(file)) {
@@ -301,12 +389,7 @@ export async function uploadEventFloorPlan(eventId: string, file: File): Promise
 export async function uploadEventMenuImage(eventId: string, file: File): Promise<Event> {
   if (!USE_MOCK) {
     if (!isUploadableImage(file)) throw new Error('Invalid file type')
-    const dataUrl = await readImageAsDataUrl(file)
-    return backend.backendUpdateEvent(eventId, {
-      menuDisplayMode: 'image',
-      menuImageUrl: dataUrl,
-      menu: undefined,
-    })
+    return backend.backendUploadMenu(eventId, file)
   }
 
   if (!isUploadableImage(file)) {
@@ -337,6 +420,89 @@ export async function uploadEventMenuImage(eventId: string, file: File): Promise
   }
 
   return delay(events[idx])
+}
+
+export async function deleteEventFloorPlan(eventId: string): Promise<Event> {
+  if (!USE_MOCK) {
+    return backend.backendDeleteFloorPlan(eventId)
+  }
+
+  const idx = events.findIndex((e) => e.id === eventId)
+  if (idx === -1) throw new Error('Event not found')
+  events[idx] = { ...events[idx], floorPlanUrl: undefined }
+  return delay(events[idx])
+}
+
+export async function deleteEventMenu(eventId: string): Promise<Event> {
+  if (!USE_MOCK) {
+    return backend.backendDeleteMenu(eventId)
+  }
+
+  const idx = events.findIndex((e) => e.id === eventId)
+  if (idx === -1) throw new Error('Event not found')
+  events[idx] = {
+    ...events[idx],
+    menuImageUrl: undefined,
+    menuDisplayMode: events[idx].menu ? 'text' : undefined,
+  }
+  return delay(events[idx])
+}
+
+export async function setEventSpotifyPlaylist(
+  eventId: string,
+  spotifyPlaylistUrl: string
+): Promise<Event> {
+  if (!USE_MOCK) {
+    return backend.backendSetSpotifyPlaylist(eventId, spotifyPlaylistUrl)
+  }
+
+  const idx = events.findIndex((e) => e.id === eventId)
+  if (idx === -1) throw new Error('Event not found')
+  events[idx] = { ...events[idx], spotifyUrl: spotifyPlaylistUrl }
+  return delay(events[idx])
+}
+
+export async function clearEventSpotifyPlaylist(eventId: string): Promise<Event> {
+  if (!USE_MOCK) {
+    return backend.backendDeleteSpotifyPlaylist(eventId)
+  }
+
+  const idx = events.findIndex((e) => e.id === eventId)
+  if (idx === -1) throw new Error('Event not found')
+  events[idx] = { ...events[idx], spotifyUrl: undefined }
+  return delay(events[idx])
+}
+
+export async function getOrCreateEventQrCode(eventId: string): Promise<QrCodeInfo> {
+  if (!USE_MOCK) {
+    return backend.backendGetOrCreateQrCode(eventId)
+  }
+
+  const event = events.find((e) => e.id === eventId)
+  if (!event) throw new Error('Event not found')
+  const token = event.qrCodeToken ?? event.publicSlug ?? event.id
+  const info: QrCodeInfo = {
+    eventId: event.id,
+    qrCodeToken: token,
+    qrCodePayload: `/e/${token}`,
+    publicGuestPagePath: `/e/${token}`,
+  }
+  events = events.map((e) =>
+    e.id === eventId
+      ? {
+          ...e,
+          qrCodeToken: token,
+          qrCodePayload: info.qrCodePayload,
+          setup: {
+            hasMenu: e.setup?.hasMenu ?? false,
+            hasFloorPlan: e.setup?.hasFloorPlan ?? false,
+            hasSpotifyPlaylist: e.setup?.hasSpotifyPlaylist ?? false,
+            hasQrCode: true,
+          },
+        }
+      : e
+  )
+  return delay(info)
 }
 
 export async function updateEvent(

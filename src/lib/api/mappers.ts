@@ -1,15 +1,34 @@
-import type { Event, EventMenu, EventTier, MenuDisplayMode, CreateEventInput } from '@/types/event'
-import type { Guest, CreateGuestInput } from '@/types/guest'
+import type {
+  Event,
+  EventMenu,
+  EventSetup,
+  EventTier,
+  GuestLookupMode,
+  MenuDisplayMode,
+  CreateEventInput,
+  QrCodeInfo,
+} from '@/types/event'
+import type {
+  Guest,
+  CreateGuestInput,
+  PublicGuestLookupResult,
+  SeatConfirmationStatus,
+} from '@/types/guest'
 import type { HostAccount, HostStatus, User, UserRole } from '@/types/user'
 import type {
   ApiAuthResponse,
   ApiEvent,
+  ApiEventSetup,
   ApiGuest,
+  ApiGuestLookupResponse,
   ApiGuestSearchResult,
   ApiMenuJson,
   ApiPublicEvent,
+  ApiQrCode,
+  ApiSeatConfirmResponse,
   ApiUser,
 } from './dto'
+import { resolveMediaUrl } from './mediaUrl'
 
 function mapHostStatus(status?: string | null): HostStatus {
   switch (status) {
@@ -21,6 +40,21 @@ function mapHostStatus(status?: string | null): HostStatus {
     default:
       return 'pending'
   }
+}
+
+function mapSetup(dto?: ApiEventSetup): EventSetup | undefined {
+  if (!dto) return undefined
+  return {
+    hasMenu: dto.has_menu,
+    hasFloorPlan: dto.has_floor_plan,
+    hasSpotifyPlaylist: dto.has_spotify_playlist,
+    hasQrCode: dto.has_qr_code,
+  }
+}
+
+function mapGuestLookupMode(mode?: string): GuestLookupMode {
+  if (mode === 'invite_code' || mode === 'personal_token') return mode
+  return 'name_only'
 }
 
 export function mapUser(dto: ApiUser): User {
@@ -52,11 +86,12 @@ export function mapAuthResponse(dto: ApiAuthResponse): { token: string; user: Us
 function mapMenuJson(menu?: ApiMenuJson | null): Pick<Event, 'menu' | 'menuDisplayMode' | 'menuImageUrl'> {
   if (!menu) return {}
 
+  const imageUrl = resolveMediaUrl(menu.image_url ?? undefined)
   const mode: MenuDisplayMode =
-    menu.display_mode === 'image' || menu.image_url ? 'image' : 'text'
+    menu.display_mode === 'image' || imageUrl ? 'image' : 'text'
 
-  if (mode === 'image' && menu.image_url) {
-    return { menuDisplayMode: 'image', menuImageUrl: menu.image_url, menu: undefined }
+  if (mode === 'image' && imageUrl) {
+    return { menuDisplayMode: 'image', menuImageUrl: imageUrl, menu: undefined }
   }
 
   const courses: EventMenu = {
@@ -80,12 +115,13 @@ export function mapEvent(dto: ApiEvent): Event {
     venue: dto.venue,
     tier: dto.tier as EventTier,
     status: dto.status as Event['status'],
+    guestLookupMode: mapGuestLookupMode(dto.guest_lookup_mode),
     approvalStatus: dto.approval_status as Event['approvalStatus'],
     paymentSubmittedAt: dto.payment_submitted_at ?? undefined,
     approvedAt: dto.approved_at ?? undefined,
     rejectedAt: dto.rejected_at ?? undefined,
     rejectionReason: dto.rejection_reason ?? undefined,
-    floorPlanUrl: dto.floor_plan_url ?? undefined,
+    floorPlanUrl: resolveMediaUrl(dto.floor_plan_url ?? undefined),
     spotifyUrl: dto.spotify_url ?? undefined,
     photoShareEnabled: dto.photo_share_enabled,
     customBranding: dto.custom_branding_json
@@ -94,33 +130,29 @@ export function mapEvent(dto: ApiEvent): Event {
           logoUrl: dto.custom_branding_json.logo_url ?? '',
         }
       : undefined,
+    setup: mapSetup(dto.setup),
     ...menuFields,
   }
 }
 
-export function mapPublicEvent(dto: ApiPublicEvent, publicSlug: string): Event {
+export function mapPublicEvent(dto: ApiPublicEvent, lookupToken: string): Event {
   const menuSource = dto.menu_json ?? dto.menu
   const menuFields = mapMenuJson(menuSource)
 
   return {
-    id: publicSlug,
-    publicSlug,
+    id: lookupToken,
+    publicSlug: lookupToken,
     hostId: '',
     name: dto.event_name ?? 'Event',
     date: dto.event_date,
     venue: dto.venue,
     tier: (dto.tier as EventTier) ?? 'free',
     status: (dto.status as Event['status']) ?? 'active',
+    guestLookupMode: mapGuestLookupMode(dto.guest_lookup_mode),
     approvalStatus: (dto.approval_status as Event['approvalStatus']) ?? 'approved',
-    floorPlanUrl: dto.floor_plan_url ?? undefined,
+    floorPlanUrl: resolveMediaUrl(dto.floor_plan_url ?? undefined),
     spotifyUrl: dto.spotify_url ?? undefined,
     photoShareEnabled: dto.photo_share_enabled ?? false,
-    customBranding: dto.custom_branding_json
-      ? {
-          primaryColor: dto.custom_branding_json.primary_color ?? '#e8c4b8',
-          logoUrl: dto.custom_branding_json.logo_url ?? '',
-        }
-      : undefined,
     ...menuFields,
   }
 }
@@ -133,16 +165,66 @@ export function mapGuest(dto: ApiGuest): Guest {
     alias: dto.alias ?? undefined,
     tableNumber: dto.table_number,
     seatNumber: dto.seat_number ?? undefined,
+    inviteCode: dto.invite_code ?? undefined,
+    lookupToken: dto.lookup_token ?? undefined,
+    seatConfirmationStatus: (dto.seat_confirmation_status as SeatConfirmationStatus) ?? undefined,
+    seatConfirmedAt: dto.seat_confirmed_at ?? undefined,
   }
 }
 
-export function guestFromSearchResult(dto: ApiGuestSearchResult, publicSlug: string): Guest {
+export function mapGuestLookupResult(dto: ApiGuestLookupResponse): PublicGuestLookupResult {
   return {
-    id: `search-${publicSlug}-${dto.guest_name}`,
-    eventId: publicSlug,
+    guestId: dto.guest_id,
+    eventName: dto.event_name,
+    guestName: dto.guest_name,
+    tableNumber: dto.table_number,
+    seatNumber: dto.seat_number ?? undefined,
+    seatConfirmationStatus: (dto.seat_confirmation_status as SeatConfirmationStatus) ?? undefined,
+  }
+}
+
+export function guestFromLookupResult(
+  result: PublicGuestLookupResult,
+  lookupToken: string
+): Guest {
+  return {
+    id: result.guestId,
+    eventId: lookupToken,
+    fullName: result.guestName,
+    tableNumber: result.tableNumber,
+    seatNumber: result.seatNumber,
+    seatConfirmationStatus: result.seatConfirmationStatus,
+  }
+}
+
+/** @deprecated Legacy GET search */
+export function guestFromSearchResult(dto: ApiGuestSearchResult, lookupToken: string): Guest {
+  return {
+    id: `search-${lookupToken}-${dto.guest_name}`,
+    eventId: lookupToken,
     fullName: dto.guest_name,
     tableNumber: dto.table_number,
     seatNumber: dto.seat_number ?? undefined,
+  }
+}
+
+export function mapQrCode(dto: ApiQrCode): QrCodeInfo {
+  return {
+    eventId: dto.event_id,
+    qrCodeToken: dto.qr_code_token,
+    qrCodePayload: dto.qr_code_payload,
+    publicGuestPagePath: dto.public_guest_page_path,
+  }
+}
+
+export function mapSeatConfirm(dto: ApiSeatConfirmResponse): PublicGuestLookupResult {
+  return {
+    guestId: dto.guest_id,
+    eventName: dto.event_name,
+    guestName: dto.guest_name,
+    tableNumber: dto.table_number,
+    seatNumber: dto.seat_number ?? undefined,
+    seatConfirmationStatus: 'seat_found',
   }
 }
 
@@ -153,6 +235,7 @@ export function toCreateEventBody(input: CreateEventInput) {
     venue: input.venue,
     tier: input.tier,
     photo_share_enabled: input.photoShareEnabled,
+    guest_lookup_mode: input.guestLookupMode ?? 'name_only',
   }
 }
 
@@ -162,6 +245,7 @@ export function toCreateGuestBody(input: CreateGuestInput) {
     alias: input.alias ?? null,
     table_number: input.tableNumber,
     seat_number: input.seatNumber ?? null,
+    invite_code: input.inviteCode ?? null,
   }
 }
 
@@ -173,7 +257,7 @@ export function toEventPatch(patch: Partial<Event>): Record<string, unknown> {
   if (patch.venue !== undefined) body.venue = patch.venue
   if (patch.tier !== undefined) body.tier = patch.tier
   if (patch.status !== undefined) body.status = patch.status
-  if (patch.floorPlanUrl !== undefined) body.floor_plan_url = patch.floorPlanUrl
+  if (patch.guestLookupMode !== undefined) body.guest_lookup_mode = patch.guestLookupMode
   if (patch.spotifyUrl !== undefined) body.spotify_url = patch.spotifyUrl
   if (patch.photoShareEnabled !== undefined) {
     body.photo_share_enabled = patch.photoShareEnabled
@@ -181,20 +265,13 @@ export function toEventPatch(patch: Partial<Event>): Record<string, unknown> {
 
   if (patch.menu !== undefined || patch.menuDisplayMode !== undefined || patch.menuImageUrl !== undefined) {
     const mode = patch.menuDisplayMode ?? (patch.menuImageUrl ? 'image' : 'text')
-    if (mode === 'image') {
-      body.menu_json = {
-        display_mode: 'image',
-        image_url: patch.menuImageUrl ?? null,
-      }
-    } else if (patch.menu) {
+    if (mode === 'text' && patch.menu) {
       body.menu_json = {
         display_mode: 'text',
         appetizer: patch.menu.appetizer ?? null,
         main: patch.menu.main ?? null,
         dessert: patch.menu.dessert ?? null,
       }
-    } else {
-      body.menu_json = null
     }
   }
 
@@ -208,9 +285,6 @@ export function toEventPatch(patch: Partial<Event>): Record<string, unknown> {
   }
 
   if (patch.approvalStatus !== undefined) body.approval_status = patch.approvalStatus
-  if (patch.paymentSubmittedAt !== undefined) {
-    body.payment_submitted_at = patch.paymentSubmittedAt
-  }
 
   return body
 }

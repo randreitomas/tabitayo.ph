@@ -1,4 +1,4 @@
-import type { Event, EventApprovalStatus, EventTier } from '@/types/event'
+import type { Event, EventApprovalStatus, EventStatus, EventTier } from '@/types/event'
 
 export const TIER_PRICES: Record<EventTier, number> = {
   free: 0,
@@ -31,6 +31,21 @@ export function isEventGuestLive(event: Event): boolean {
 
 export function canHostPublishQr(event: Event): boolean {
   return event.approvalStatus === 'approved'
+}
+
+export function eventStatusBadgeVariant(
+  status: EventStatus
+): 'active' | 'ended' | 'archived' | 'suspended' | 'default' {
+  switch (status) {
+    case 'active':
+      return 'active'
+    case 'ended':
+      return 'ended'
+    case 'archived':
+      return 'archived'
+    case 'cancelled':
+      return 'suspended'
+  }
 }
 
 export function approvalBadgeVariant(

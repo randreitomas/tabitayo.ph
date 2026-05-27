@@ -4,19 +4,31 @@ import { useEvent } from '@/hooks/useEvent'
 import { useGuests } from '@/hooks/useGuests'
 import { USE_MOCK } from '@/lib/api/config'
 import type { Guest } from '@/types/guest'
+import type { PublicGuestLookupResult } from '@/types/guest'
 import { NameSearch } from '@/components/guest/NameSearch'
-import { PublicNameSearch } from '@/components/guest/PublicNameSearch'
+import { PublicGuestLookup } from '@/components/guest/PublicGuestLookup'
 import { TableBrowse } from '@/components/guest/TableBrowse'
 import { SeatResult } from '@/components/guest/SeatResult'
 import { EventDetails } from '@/components/guest/EventDetails'
 import { LogoFull } from '@/components/logo/LogoFull'
 import { isEventGuestLive } from '@/lib/eventApproval'
 
+function guestToLookupResult(guest: Guest, eventName: string): PublicGuestLookupResult {
+  return {
+    guestId: guest.id,
+    eventName,
+    guestName: guest.fullName,
+    tableNumber: guest.tableNumber,
+    seatNumber: guest.seatNumber,
+    seatConfirmationStatus: guest.seatConfirmationStatus,
+  }
+}
+
 export function EventPage() {
-  const { eventId: publicSlug } = useParams<{ eventId: string }>()
-  const { event, loading, error } = useEvent(publicSlug, 'public')
-  const { guests, loading: guestsLoading } = useGuests(USE_MOCK ? publicSlug : undefined)
-  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null)
+  const { eventId: lookupToken } = useParams<{ eventId: string }>()
+  const { event, loading, error } = useEvent(lookupToken, 'public')
+  const { guests, loading: guestsLoading } = useGuests(USE_MOCK ? lookupToken : undefined)
+  const [seatResult, setSeatResult] = useState<PublicGuestLookupResult | null>(null)
   const [browseByTable, setBrowseByTable] = useState(false)
 
   if (loading) {
@@ -42,17 +54,20 @@ export function EventPage() {
         <LogoFull size="lg" className="mb-6" />
         <h1 className="font-heading text-3xl">{event.name}</h1>
         <p className="text-muted text-sm max-w-xs mx-auto">
-          {event.status !== 'active'
-            ? event.status === 'ended'
-              ? 'This event has ended. Thank you for celebrating with us.'
-              : 'This event is no longer available.'
-            : 'This event is not live yet. Please check back soon or ask your host.'}
+          {event.status === 'cancelled'
+            ? 'This event has been cancelled.'
+            : event.status !== 'active'
+              ? event.status === 'ended'
+                ? 'This event has ended. Thank you for celebrating with us.'
+                : 'This event is no longer available.'
+              : 'This event is not live yet. Please check back soon or ask your host.'}
         </p>
       </div>
     )
   }
 
   const accent = event.customBranding?.primaryColor ?? '#e8c4b8'
+  const token = lookupToken ?? event.qrCodeToken ?? event.publicSlug ?? event.id
 
   return (
     <div className="space-y-8 pb-8">
@@ -76,10 +91,17 @@ export function EventPage() {
         <h2 className="font-heading text-xl text-center mb-4">Find your seat</h2>
         {USE_MOCK ? (
           !guestsLoading && (
-            <NameSearch guests={guests} onSelect={setSelectedGuest} />
+            <NameSearch
+              guests={guests}
+              onSelect={(g) => setSeatResult(guestToLookupResult(g, event.name))}
+            />
           )
         ) : (
-          publicSlug && <PublicNameSearch publicSlug={publicSlug} onSelect={setSelectedGuest} />
+          <PublicGuestLookup
+            lookupToken={token}
+            guestLookupMode={event.guestLookupMode}
+            onResult={setSeatResult}
+          />
         )}
       </section>
 
@@ -98,14 +120,21 @@ export function EventPage() {
           </div>
 
           {browseByTable && !guestsLoading && (
-            <TableBrowse guests={guests} onSelect={setSelectedGuest} />
+            <TableBrowse
+              guests={guests}
+              onSelect={(g) => setSeatResult(guestToLookupResult(g, event.name))}
+            />
           )}
         </>
       )}
 
-      {selectedGuest && (
+      {seatResult && (
         <section className="pt-2 border-t border-border">
-          <SeatResult guest={selectedGuest} onBack={() => setSelectedGuest(null)} />
+          <SeatResult
+            lookupToken={token}
+            result={seatResult}
+            onBack={() => setSeatResult(null)}
+          />
         </section>
       )}
 

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { uploadEventFloorPlan, updateEvent } from '@/lib/api'
+import { uploadEventFloorPlan, deleteEventFloorPlan } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/api/mediaUrl'
 import type { Event } from '@/types/event'
 import { FloorPlan } from '@/components/guest/FloorPlan'
 import { Button } from '@/components/ui/Button'
@@ -46,9 +47,11 @@ export function FloorPlanEditor({ event, onUpdated }: FloorPlanEditorProps) {
 
   const removeFloorPlan = async () => {
     setError(null)
-    const updated = await updateEvent(event.id, { floorPlanUrl: undefined })
+    const updated = await deleteEventFloorPlan(event.id)
     onUpdated(updated)
   }
+
+  const floorPlanSrc = resolveMediaUrl(event.floorPlanUrl)
 
   return (
     <div className="space-y-5 max-w-lg">
@@ -85,7 +88,7 @@ export function FloorPlanEditor({ event, onUpdated }: FloorPlanEditorProps) {
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
-      {event.floorPlanUrl && (
+      {floorPlanSrc && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-muted uppercase tracking-wide">Current floor plan</p>
@@ -93,7 +96,7 @@ export function FloorPlanEditor({ event, onUpdated }: FloorPlanEditorProps) {
               Remove
             </Button>
           </div>
-          <FloorPlan imageUrl={event.floorPlanUrl} eventName={event.name} />
+          <FloorPlan imageUrl={floorPlanSrc} eventName={event.name} />
         </div>
       )}
     </div>

@@ -4,13 +4,10 @@ import { useEvent } from '@/hooks/useEvent'
 import {
   updateEvent,
   deleteEvent,
-  getEventPhotos,
-  updatePhotoStatus,
   setEventSpotifyPlaylist,
   clearEventSpotifyPlaylist,
 } from '@/lib/api'
-import { USE_MOCK } from '@/lib/api/config'
-import type { PhotoShareItem } from '@/types/event'
+import { HostPhotoSharePanel } from '@/components/host/HostPhotoSharePanel'
 import { Tabs } from '@/components/ui/Tabs'
 
 const EVENT_DETAIL_TABS = [
@@ -45,10 +42,8 @@ export function EventDetail() {
   const navigate = useNavigate()
   const { event, loading, setEvent } = useEvent(id, 'host')
   const [activeTab, setActiveTab] = useState('guests')
-  const [photos, setPhotos] = useState<PhotoShareItem[]>([])
   const [spotifyDraft, setSpotifyDraft] = useState('')
   const [spotifyError, setSpotifyError] = useState<string | null>(null)
-  const [photoError, setPhotoError] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -58,11 +53,6 @@ export function EventDetail() {
       setSpotifyDraft(event.spotifyUrl ?? '')
     }
   }, [event])
-
-  useEffect(() => {
-    if (!id) return
-    getEventPhotos(id).then(setPhotos)
-  }, [id, activeTab])
 
   if (loading || !event) {
     return <p className="text-muted">{loading ? 'Loading...' : 'Event not found'}</p>
@@ -137,71 +127,7 @@ export function EventDetail() {
           </div>
         )
       case 'photos':
-        return (
-          <div className="space-y-4">
-            {photoError && <p className="text-xs text-red-600">{photoError}</p>}
-            {!USE_MOCK ? (
-              <p className="text-muted text-sm">
-                Photo share moderation is not available via the API yet. Use mock mode or wait for a
-                future release.
-              </p>
-            ) : !event.photoShareEnabled ? (
-              <p className="text-muted text-sm">Photo share is disabled for this event.</p>
-            ) : photos.filter((p) => p.status === 'pending').length === 0 ? (
-              <p className="text-muted text-sm">No photos pending approval.</p>
-            ) : (
-              <ul className="grid sm:grid-cols-2 gap-4">
-                {photos
-                  .filter((p) => p.status === 'pending')
-                  .map((photo) => (
-                    <li key={photo.id} className="border border-border rounded-sm p-3 space-y-3">
-                      <img
-                        src={photo.imageUrl}
-                        alt=""
-                        className="w-full aspect-video object-cover rounded-sm"
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="accent"
-                          onClick={async () => {
-                            try {
-                              setPhotoError(null)
-                              await updatePhotoStatus(photo.id, 'approved')
-                              setPhotos(await getEventPhotos(event.id))
-                            } catch (err) {
-                              setPhotoError(
-                                getApiErrorMessage(err, 'Could not update photo status.')
-                              )
-                            }
-                          }}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={async () => {
-                            try {
-                              setPhotoError(null)
-                              await updatePhotoStatus(photo.id, 'rejected')
-                              setPhotos(await getEventPhotos(event.id))
-                            } catch (err) {
-                              setPhotoError(
-                                getApiErrorMessage(err, 'Could not update photo status.')
-                              )
-                            }
-                          }}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </div>
-        )
+        return <HostPhotoSharePanel event={event} />
       case 'qr':
         return canHostPublishQr(event) ? (
           <QRDisplay

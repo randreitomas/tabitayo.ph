@@ -139,7 +139,7 @@ export function EventPage() {
         </section>
       )}
 
-      <EventDetails event={event} />
+      <EventDetails event={event} lookupToken={token} />
     </div>
   )
 }

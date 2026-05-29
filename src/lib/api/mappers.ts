@@ -6,6 +6,7 @@ import type {
   GuestLookupMode,
   MenuDisplayMode,
   CreateEventInput,
+  PhotoShareItem,
   QrCodeInfo,
 } from '@/types/event'
 import type {
@@ -25,6 +26,7 @@ import type {
   ApiGuestSearchResult,
   ApiMenuAssetRead,
   ApiMenuJson,
+  ApiPhotoShareItem,
   ApiPublicEvent,
   ApiPublicGuestSuggestionResponse,
   ApiQrCode,
@@ -301,4 +303,15 @@ export function unwrapGuestList(data: unknown): ApiGuest[] {
   if (Array.isArray(data)) return data as ApiGuest[]
   const obj = data as { items?: ApiGuest[]; guests?: ApiGuest[] }
   return obj.items ?? obj.guests ?? []
+}
+
+export function mapPhotoShareItem(dto: ApiPhotoShareItem, eventId = ''): PhotoShareItem {
+  return {
+    id: dto.id,
+    eventId: dto.event_id ?? eventId,
+    imageUrl: resolveMediaUrl(dto.image_url) ?? dto.image_url,
+    caption: dto.caption ?? undefined,
+    status: (dto.status as PhotoShareItem['status']) ?? 'pending',
+    uploadedAt: dto.created_at,
+  }
 }

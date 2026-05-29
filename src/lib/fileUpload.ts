@@ -22,5 +22,8 @@ export const UPLOADABLE_IMAGE_ACCEPT = {
   'image/webp': ['.webp'],
 } as const
 
+/** Default backend max for public photo uploads (5 MB). */
+export const MAX_PHOTO_UPLOAD_BYTES = 5 * 1024 * 1024
+
 /** @deprecated Use isUploadableImage */
 export const isFloorPlanImage = isUploadableImage

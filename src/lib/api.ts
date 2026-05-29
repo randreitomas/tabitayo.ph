@@ -303,7 +303,7 @@ export async function getEventGuests(eventId: string): Promise<Guest[]> {
 
 export async function getApprovedPhotos(eventId: string): Promise<PhotoShareItem[]> {
   if (!USE_MOCK) {
-    return backend.backendGetApprovedPhotos(eventId)
+    return []
   }
 
   return delay(
@@ -312,17 +312,17 @@ export async function getApprovedPhotos(eventId: string): Promise<PhotoShareItem
 }
 
 export async function uploadGuestPhoto(
-  eventId: string,
+  lookupToken: string,
   file: File,
   caption?: string
 ): Promise<PhotoShareItem> {
   if (!USE_MOCK) {
-    return backend.backendUploadGuestPhoto()
+    return backend.backendUploadGuestPhoto(lookupToken, file, caption)
   }
 
   const item: PhotoShareItem = {
     id: generateId('ph'),
-    eventId,
+    eventId: lookupToken,
     imageUrl: URL.createObjectURL(file),
     caption,
     status: 'pending',
@@ -674,17 +674,28 @@ export async function getEventPhotos(eventId: string): Promise<PhotoShareItem[]>
 }
 
 export async function updatePhotoStatus(
+  eventId: string,
   photoId: string,
   status: PhotoShareItem['status']
 ): Promise<PhotoShareItem> {
   if (!USE_MOCK) {
-    return backend.backendUpdatePhotoStatus()
+    return backend.backendUpdatePhotoStatus(eventId, photoId, status)
   }
 
   const idx = photos.findIndex((p) => p.id === photoId)
   if (idx === -1) throw new Error('Photo not found')
   photos[idx] = { ...photos[idx], status }
   return delay(photos[idx])
+}
+
+export async function deleteEventPhoto(eventId: string, photoId: string): Promise<void> {
+  if (!USE_MOCK) {
+    await backend.backendDeleteEventPhoto(eventId, photoId)
+    return
+  }
+
+  photos = photos.filter((p) => p.id !== photoId)
+  return delay(undefined)
 }
 
 // ——— Admin ———

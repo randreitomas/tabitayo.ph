@@ -15,6 +15,7 @@ import type {
   ApiEvent,
   ApiMenuAssetRead,
   ApiPaymentSubmission,
+  ApiPhotoShareItem,
   ApiQrCode,
 } from './dto'
 import {
@@ -26,6 +27,7 @@ import {
   mapGuestSuggestions,
   mapHostAccount,
   mapMenuAssetRead,
+  mapPhotoShareItem,
   mapPublicEvent,
   mapQrCode,
   mapSeatConfirm,
@@ -397,23 +399,50 @@ export async function backendGetActivityLogs(
   return []
 }
 
-export async function backendGetApprovedPhotos(_eventId?: string): Promise<PhotoShareItem[]> {
-  return []
+export async function backendUploadGuestPhoto(
+  lookupToken: string,
+  file: File,
+  caption?: string
+): Promise<PhotoShareItem> {
+  const form = new FormData()
+  form.append('file', file)
+  const trimmed = caption?.trim()
+  if (trimmed) form.append('caption', trimmed)
+
+  const { data } = await apiClient.post<ApiPhotoShareItem>(
+    `/public/events/${encodeURIComponent(lookupToken)}/photos`,
+    form,
+    {
+      headers: { 'Content-Type': undefined },
+      validateStatus: (s) => s >= 200 && s < 300,
+    }
+  )
+  return mapPhotoShareItem(data, lookupToken)
 }
 
-export async function backendUploadGuestPhoto(): Promise<PhotoShareItem> {
-  throw new Error('Photo share is not available on the API yet.')
-}
-
-export async function backendGetEventPhotos(_eventId?: string): Promise<PhotoShareItem[]> {
-  return []
+export async function backendGetEventPhotos(eventId: string): Promise<PhotoShareItem[]> {
+  const { data } = await apiClient.get(
+    `/host/events/${encodeURIComponent(eventId)}/photos`
+  )
+  return unwrapList<ApiPhotoShareItem>(data).map((item) => mapPhotoShareItem(item, eventId))
 }
 
 export async function backendUpdatePhotoStatus(
-  _photoId?: string,
-  _status?: PhotoShareItem['status']
+  eventId: string,
+  photoId: string,
+  status: PhotoShareItem['status']
 ): Promise<PhotoShareItem> {
-  throw new Error('Photo share is not available on the API yet.')
+  const { data } = await apiClient.patch<ApiPhotoShareItem>(
+    `/host/events/${encodeURIComponent(eventId)}/photos/${encodeURIComponent(photoId)}`,
+    { status }
+  )
+  return mapPhotoShareItem(data, eventId)
+}
+
+export async function backendDeleteEventPhoto(eventId: string, photoId: string): Promise<void> {
+  await apiClient.delete(
+    `/host/events/${encodeURIComponent(eventId)}/photos/${encodeURIComponent(photoId)}`
+  )
 }
 
 // Re-export for legacy search typing

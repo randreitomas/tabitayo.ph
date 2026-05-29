@@ -1,5 +1,4 @@
 import type { Event } from '@/types/event'
-import { USE_MOCK } from '@/lib/api/config'
 import { hasMenuForGuests, inferMenuDisplayMode } from '@/lib/menu'
 import { toSpotifyEmbedUrl } from '@/lib/spotify'
 import { FloorPlan } from '@/components/guest/FloorPlan'
@@ -8,15 +7,16 @@ import { PhotoGallery } from '@/components/guest/PhotoGallery'
 
 interface EventDetailsProps {
   event: Event
+  lookupToken: string
 }
 
-export function EventDetails({ event }: EventDetailsProps) {
+export function EventDetails({ event, lookupToken }: EventDetailsProps) {
   const showFloorPlan = Boolean(event.floorPlanUrl)
   const showMenu = hasMenuForGuests(event)
   const menuMode = inferMenuDisplayMode(event)
   const spotifyEmbedSrc = event.spotifyUrl ? toSpotifyEmbedUrl(event.spotifyUrl) : null
   const showPlaylist = Boolean(spotifyEmbedSrc)
-  const showPhotos = USE_MOCK && event.photoShareEnabled
+  const showPhotos = event.photoShareEnabled
 
   const hasContent = showFloorPlan || showMenu || showPlaylist || showPhotos
 
@@ -57,7 +57,7 @@ export function EventDetails({ event }: EventDetailsProps) {
       )}
 
       {showPhotos && (
-        <PhotoGallery eventId={event.id} enabled={event.photoShareEnabled} tier={event.tier} />
+        <PhotoGallery lookupToken={lookupToken} enabled={event.photoShareEnabled} />
       )}
     </section>
   )

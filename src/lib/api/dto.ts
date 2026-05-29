@@ -142,3 +142,15 @@ export interface ApiPaymentSubmission {
   created_at?: string
   updated_at?: string
 }
+
+export interface ApiPhotoShareItem {
+  id: string
+  event_id?: string
+  image_url: string
+  storage_key?: string
+  caption?: string | null
+  status: string
+  uploaded_by_type?: string
+  created_at: string
+  updated_at?: string
+}

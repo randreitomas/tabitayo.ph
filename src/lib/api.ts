@@ -1,4 +1,3 @@
-import Papa from 'papaparse'
 import type { Event, CreateEventInput, PhotoShareItem, QrCodeInfo } from '@/types/event'
 import { USE_MOCK } from '@/lib/api/config'
 import * as backend from '@/lib/api/backend'
@@ -14,6 +13,7 @@ import {
   filterGuestsForSuggestions,
   findGuestForNameLookup,
 } from '@/lib/guestNameSearch'
+import { normalizeGuestCsvForUpload, parseGuestCsvFile } from '@/lib/guestCsv'
 import { guestFromLookupResult } from '@/lib/api/mappers'
 import type {
   AuthResponse,
@@ -603,39 +603,12 @@ export async function addGuest(
 
 export async function uploadGuestsCsv(eventId: string, file: File): Promise<Guest[]> {
   if (!USE_MOCK) {
-    return backend.backendUploadGuestsCsv(eventId, file)
+    const normalized = await normalizeGuestCsvForUpload(file)
+    return backend.backendUploadGuestsCsv(eventId, normalized)
   }
 
-  return new Promise((resolve, reject) => {
-    Papa.parse<Record<string, string>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const inputs: CreateGuestInput[] = []
-        for (const row of results.data) {
-          const fullName =
-            row.full_name ?? row.fullName ?? row.name ?? row['Full Name']
-          const tableNumber =
-            row.table_number ?? row.tableNumber ?? row.table ?? row['Table']
-          if (!fullName?.trim() || !tableNumber?.trim()) continue
-          inputs.push({
-            fullName: fullName.trim(),
-            alias: (row.alias ?? row.Alias)?.trim() || undefined,
-            tableNumber: tableNumber.trim(),
-            seatNumber:
-              (row.seat_number ?? row.seatNumber ?? row.seat)?.trim() || undefined,
-          })
-        }
-
-        if (inputs.length === 0) {
-          reject(new Error('No valid rows found.'))
-          return
-        }
-        resolve(await addGuestsBulk(eventId, inputs))
-      },
-      error: () => reject(new Error('Could not parse CSV file.')),
-    })
-  })
+  const inputs = await parseGuestCsvFile(file)
+  return addGuestsBulk(eventId, inputs)
 }
 
 export async function addGuestsBulk(

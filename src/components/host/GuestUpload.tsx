@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
+import { GUEST_CSV_TEMPLATE_SAMPLE } from '@/lib/guestCsv'
 import { Button } from '@/components/ui/Button'
 
 interface GuestUploadProps {
@@ -50,9 +51,8 @@ export function GuestUpload({ onUploadCsv }: GuestUploadProps) {
           {loading ? 'Importing...' : 'Drop CSV here or click to browse'}
         </p>
         <p className="text-xs text-muted mt-2">
-          Required columns: <span className="font-mono">full_name</span>,{' '}
-          <span className="font-mono">table_number</span> · optional: alias, seat_number · max 1
-          MB
+          Required columns: <span className="font-mono">fullName</span>,{' '}
+          <span className="font-mono">tableNumber</span> · optional: alias, seatNumber · max 1 MB
         </p>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
@@ -60,9 +60,7 @@ export function GuestUpload({ onUploadCsv }: GuestUploadProps) {
         variant="ghost"
         size="sm"
         onClick={() => {
-          const sample =
-            'full_name,alias,table_number,seat_number\nJuan Dela Cruz,Johnny,Table 1,4\nMaria Santos,,Table 2,'
-          const blob = new Blob([sample], { type: 'text/csv' })
+          const blob = new Blob([GUEST_CSV_TEMPLATE_SAMPLE], { type: 'text/csv' })
           const url = URL.createObjectURL(blob)
           const a = document.createElement('a')
           a.href = url

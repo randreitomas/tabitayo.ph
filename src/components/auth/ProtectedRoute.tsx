@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthContext } from '@/contexts/AuthContext'
-import { isHostPending } from '@/lib/hostAccess'
+import { isHostActive, isHostPending } from '@/lib/hostAccess'
 import type { UserRole } from '@/types/user'
 
 interface ProtectedRouteProps {
@@ -27,6 +27,10 @@ export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
   if (role && user.role !== role) {
     const redirect = user.role === 'admin' ? '/admin/hosts' : '/host/events'
     return <Navigate to={redirect} replace />
+  }
+
+  if (role === 'host' && isHostActive(user) && location.pathname.startsWith('/host/pending')) {
+    return <Navigate to="/host/events" replace />
   }
 
   if (role === 'host' && isHostPending(user)) {

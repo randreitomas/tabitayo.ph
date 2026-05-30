@@ -8,6 +8,7 @@ interface AuthContextValue {
   login: (input: LoginInput) => Promise<User>
   register: (input: RegisterInput) => Promise<User>
   logout: () => Promise<void>
+  refresh: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)

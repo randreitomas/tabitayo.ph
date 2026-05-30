@@ -41,6 +41,8 @@ function mapHostStatus(status?: string | null): HostStatus {
   if (status === 'active' || status === 'disabled' || status === 'pending') return status
   if (status === 'approved') return 'active'
   if (status === 'suspended') return 'disabled'
+  // Some /auth/me responses omit host_status for approved hosts; do not treat as pending.
+  if (status == null || status === '') return 'active'
   return 'pending'
 }
 

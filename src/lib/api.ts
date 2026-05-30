@@ -126,7 +126,7 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
       createdAt: new Date().toISOString().slice(0, 10),
     },
   ]
-  return { token: 'mock-host-token', user }
+  return { token: `mock-host-${user.id}`, user }
 }
 
 export async function recordLogout(user: User): Promise<void> {
@@ -149,6 +149,19 @@ export async function getCurrentUser(): Promise<User | null> {
 
   if (token === 'mock-admin-token') return MOCK_ADMIN
   if (token === 'mock-host-token') return MOCK_HOST
+  if (token.startsWith('mock-host-')) {
+    const hostId = token.slice('mock-host-'.length)
+    const account = hosts.find((h) => h.id === hostId)
+    if (account) {
+      return {
+        id: account.id,
+        email: account.email,
+        role: 'host',
+        displayName: account.displayName,
+        hostStatus: account.status,
+      }
+    }
+  }
   return null
 }
 

@@ -47,3 +47,93 @@ export function getMediaOrigin(): string {
   if (import.meta.env.PROD) return ''
   return import.meta.env.VITE_MEDIA_ORIGIN ?? RENDER_API_BASE.replace(/\/api\/v1\/?$/, '')
 }
+
+/** Strip wrappers so API keys map to `/media/event-assets/{key}`. */
+export function normalizeEventAssetStorageKey(raw: string): string {
+  let key = raw.trim()
+  if (key.startsWith('/media/event-assets/')) {
+    key = key.slice('/media/event-assets/'.length)
+  } else if (key.startsWith('media/event-assets/')) {
+    key = key.slice('media/event-assets/'.length)
+  } else if (key.startsWith('event-assets/')) {
+    key = key.slice('event-assets/'.length)
+  }
+  return key.replace(/^\/+/, '')
+}
+
+/** Same-origin path for `/media/event-assets/{storage_key}` (see OpenAPI). */
+export function getMediaAssetPath(storageKeyOrUrl: string): string {
+  const trimmed = storageKeyOrUrl.trim()
+  if (trimmed.startsWith('/media/')) return trimmed
+  const key = normalizeEventAssetStorageKey(trimmed)
+  const encoded = key.split('/').map(encodeURIComponent).join('/')
+  return `/media/event-assets/${encoded}`
+}
+
+/** Resolve storage key for host moderation previews. */
+export function resolveHostPhotoStorageKey(photo: {
+  storageKey?: string | null
+  imageUrl?: string | null
+}): string | undefined {
+  if (photo.storageKey?.trim()) {
+    return normalizeEventAssetStorageKey(photo.storageKey)
+  }
+  const resolved = resolveMediaUrl(photo.imageUrl)
+  if (!resolved) return undefined
+  const match = resolved.match(/\/media\/event-assets\/([^?#]+)/)
+  if (!match?.[1]) return undefined
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return match[1]
+  }
+}
+
+const TOKEN_KEY = 'tabitayo_token'
+
+function isImageResponse(response: Response, blob: Blob): boolean {
+  const contentType = response.headers.get('content-type') ?? blob.type
+  if (contentType.includes('application/json')) return false
+  if (contentType.startsWith('image/')) return true
+  return blob.size > 0 && (blob.type === '' || blob.type.startsWith('image/'))
+}
+
+/**
+ * Load event asset bytes with host auth. Public `/media/*` only serves approved photos;
+ * hosts must fetch pending/rejected previews with Authorization.
+ */
+export async function fetchAuthenticatedMediaBlobUrl(
+  storageKeyOrUrl: string,
+  options?: { alternatePath?: string }
+): Promise<string> {
+  const token = localStorage.getItem(TOKEN_KEY)
+  const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
+
+  const paths = [
+    getMediaAssetPath(storageKeyOrUrl),
+    options?.alternatePath?.trim(),
+  ].filter((path): path is string => Boolean(path))
+  const uniquePaths = [...new Set(paths)]
+
+  let lastError: Error | null = null
+
+  for (const path of uniquePaths) {
+    try {
+      const response = await fetch(path, { headers, cache: 'no-store' })
+      if (!response.ok) {
+        lastError = new Error(`Media request failed (${response.status})`)
+        continue
+      }
+      const blob = await response.blob()
+      if (!isImageResponse(response, blob)) {
+        lastError = new Error('Media response was not an image')
+        continue
+      }
+      return URL.createObjectURL(blob)
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error('Media fetch failed')
+    }
+  }
+
+  throw lastError ?? new Error('Media fetch failed')
+}

@@ -6,7 +6,7 @@ import {
   updatePhotoStatus,
 } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/api/errors'
-import { MediaImage } from '@/components/ui/MediaImage'
+import { HostPhotoPreview } from '@/components/host/HostPhotoPreview'
 import { Button } from '@/components/ui/Button'
 import { Tabs } from '@/components/ui/Tabs'
 
@@ -82,11 +82,10 @@ export function HostPhotoSharePanel({ event }: HostPhotoSharePanelProps) {
               const busy = actionId === photo.id
               return (
                 <li key={photo.id} className="border border-border rounded-sm p-3 space-y-3">
-                  <MediaImage
-                    src={photo.imageUrl}
+                  <HostPhotoPreview
+                    photo={photo}
                     alt={photo.caption ?? 'Uploaded photo'}
                     className="w-full aspect-video object-cover rounded-sm"
-                    unavailableMessage="Photo unavailable (it may have been rejected or removed)."
                   />
                   {photo.caption && (
                     <p className="text-xs text-muted line-clamp-2">{photo.caption}</p>

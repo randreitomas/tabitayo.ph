@@ -51,6 +51,7 @@ const PHOTO_UPLOAD_ERROR_MESSAGES: Record<string, string> = {
   upload_too_large: 'This photo is too large. Please use an image under 5 MB.',
   rate_limited: 'Too many uploads. Please wait a moment and try again.',
   not_found: 'This event is not available.',
+  consent_required: 'Please confirm you have permission to share this photo.',
 }
 
 export function getPhotoUploadErrorMessage(

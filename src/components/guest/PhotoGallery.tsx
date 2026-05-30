@@ -8,6 +8,7 @@ import {
   MAX_PHOTO_UPLOAD_BYTES,
   UPLOADABLE_IMAGE_ACCEPT,
 } from '@/lib/fileUpload'
+import { GUEST_PHOTO_CONSENT_TEXT } from '@/lib/photoShare'
 import { MediaImage } from '@/components/ui/MediaImage'
 import { Button } from '@/components/ui/Button'
 
@@ -25,14 +26,17 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [unavailable, setUnavailable] = useState(false)
+  const [consentAcknowledged, setConsentAcknowledged] = useState(false)
 
   const loadApproved = useCallback(async () => {
     if (!enabled) return
     try {
       const data = await getApprovedPhotos(lookupToken)
       setPhotos(data)
-    } catch {
-      /* keep last loaded gallery on transient errors */
+    } catch (err) {
+      if (getApiErrorCode(err) === 'photo_share_unavailable') {
+        setUnavailable(true)
+      }
     }
   }, [lookupToken, enabled])
 
@@ -59,6 +63,10 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
       const file = files[0]
       if (!file) return
 
+      if (!consentAcknowledged) {
+        setMessage('Please confirm you have permission to share this photo.')
+        return
+      }
       if (!isUploadableImage(file)) {
         setMessage('Please upload a JPEG, PNG, or WebP image.')
         return
@@ -71,7 +79,7 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
       setUploading(true)
       setMessage(null)
       try {
-        await uploadGuestPhoto(lookupToken, file, caption)
+        await uploadGuestPhoto(lookupToken, file, caption, true)
         setCaption('')
         setMessage('Photo submitted for review. It will appear here once the host approves it.')
       } catch (err) {
@@ -81,7 +89,7 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
         setUploading(false)
       }
     },
-    [lookupToken, caption]
+    [lookupToken, caption, consentAcknowledged]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -89,7 +97,7 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
     accept: UPLOADABLE_IMAGE_ACCEPT,
     maxFiles: 1,
     maxSize: MAX_PHOTO_UPLOAD_BYTES,
-    disabled: !enabled || unavailable || uploading,
+    disabled: !enabled || unavailable || uploading || !consentAcknowledged,
   })
 
   if (!enabled) return null
@@ -140,6 +148,16 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
             No photos yet. Be the first to share a moment from this event.
           </p>
         )}
+
+        <label className="flex items-start gap-2 cursor-pointer border border-border rounded-sm p-3 bg-border/10">
+          <input
+            type="checkbox"
+            checked={consentAcknowledged}
+            onChange={(e) => setConsentAcknowledged(e.target.checked)}
+            className="mt-0.5 shrink-0"
+          />
+          <span className="text-xs text-muted leading-relaxed">{GUEST_PHOTO_CONSENT_TEXT}</span>
+        </label>
 
         <label className="block space-y-1">
           <span className="text-xs text-muted">Caption (optional)</span>

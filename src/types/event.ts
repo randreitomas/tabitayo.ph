@@ -62,6 +62,8 @@ export interface CreateEventInput {
   venue: string
   tier: EventTier
   photoShareEnabled: boolean
+  /** Required by API when `photoShareEnabled` is true. */
+  photoSharePublicGalleryAcknowledged?: boolean
   guestLookupMode?: GuestLookupMode
 }
 
@@ -69,6 +71,8 @@ export interface PhotoShareItem {
   id: string
   eventId: string
   imageUrl: string
+  /** Host-only; required to preview pending/rejected photos (not on public media). */
+  storageKey?: string
   caption?: string
   status: 'pending' | 'approved' | 'rejected'
   uploadedAt: string

@@ -9,6 +9,7 @@ import type {
 import type { HostAccount, HostStatus, LoginInput, RegisterInput, User } from '@/types/user'
 import type { ActivityLog, ActivityLogFilters } from '@/types/activityLog'
 import { apiClient } from './client'
+import { PUBLIC_PHOTOS_PAGE_SIZE } from '@/lib/photoShare'
 import { getApiErrorMessage, isApiNotFound } from './errors'
 import type {
   ApiAuthResponse,
@@ -447,10 +448,12 @@ export async function backendGetActivityLogs(
 export async function backendUploadGuestPhoto(
   lookupToken: string,
   file: File,
-  caption?: string
+  caption?: string,
+  consentAcknowledged = false
 ): Promise<PhotoShareItem> {
   const form = new FormData()
   form.append('file', file)
+  form.append('consent_acknowledged', consentAcknowledged ? 'true' : 'false')
   const trimmed = caption?.trim()
   if (trimmed) form.append('caption', trimmed)
 
@@ -462,19 +465,26 @@ export async function backendUploadGuestPhoto(
       validateStatus: (s) => s >= 200 && s < 300,
     }
   )
-  return mapPhotoShareItem(data, lookupToken)
+  return mapPhotoShareItem(data, lookupToken, { forPublicGallery: true })
 }
 
 export async function backendGetPublicApprovedPhotos(
-  lookupToken: string
+  lookupToken: string,
+  options?: { limit?: number; offset?: number }
 ): Promise<PhotoShareItem[]> {
   try {
     const { data } = await apiClient.get(
-      `/public/events/${encodeURIComponent(lookupToken)}/photos`
+      `/public/events/${encodeURIComponent(lookupToken)}/photos`,
+      {
+        params: {
+          limit: options?.limit ?? PUBLIC_PHOTOS_PAGE_SIZE,
+          offset: options?.offset ?? 0,
+        },
+      }
     )
-    return unwrapList<ApiPhotoShareItem>(data)
-      .map((item) => mapPhotoShareItem(item, lookupToken))
-      .filter((photo) => photo.status === 'approved')
+    return unwrapList<ApiPhotoShareItem>(data).map((item) =>
+      mapPhotoShareItem(item, lookupToken, { forPublicGallery: true })
+    )
   } catch (err) {
     if (isApiNotFound(err)) return []
     throw new Error(getApiErrorMessage(err, 'Could not load event photos.'))

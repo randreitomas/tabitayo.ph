@@ -248,6 +248,9 @@ export function toCreateEventBody(input: CreateEventInput) {
     venue: input.venue,
     tier: input.tier,
     photo_share_enabled: input.photoShareEnabled,
+    photo_share_public_gallery_acknowledged: input.photoShareEnabled
+      ? (input.photoSharePublicGalleryAcknowledged ?? false)
+      : false,
     guest_lookup_mode: input.guestLookupMode ?? 'name_only',
   }
 }
@@ -325,11 +328,18 @@ export function mapActivityLog(dto: ApiActivityLog): ActivityLog {
   }
 }
 
-export function mapPhotoShareItem(dto: ApiPhotoShareItem, eventId = ''): PhotoShareItem {
+export function mapPhotoShareItem(
+  dto: ApiPhotoShareItem,
+  eventId = '',
+  options?: { forPublicGallery?: boolean }
+): PhotoShareItem {
   return {
     id: dto.id,
     eventId: dto.event_id ?? eventId,
-    imageUrl: resolveMediaUrl(dto.image_url) ?? dto.image_url,
+    imageUrl: options?.forPublicGallery
+      ? (resolveMediaUrl(dto.image_url) ?? dto.image_url)
+      : dto.image_url,
+    storageKey: dto.storage_key,
     caption: dto.caption ?? undefined,
     status: (dto.status as PhotoShareItem['status']) ?? 'pending',
     uploadedAt: dto.created_at,

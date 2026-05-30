@@ -328,10 +328,11 @@ export async function getApprovedPhotos(lookupToken: string): Promise<PhotoShare
 export async function uploadGuestPhoto(
   lookupToken: string,
   file: File,
-  caption?: string
+  caption?: string,
+  consentAcknowledged = false
 ): Promise<PhotoShareItem> {
   if (!USE_MOCK) {
-    return backend.backendUploadGuestPhoto(lookupToken, file, caption)
+    return backend.backendUploadGuestPhoto(lookupToken, file, caption, consentAcknowledged)
   }
 
   const item: PhotoShareItem = {

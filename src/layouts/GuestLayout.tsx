@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { LogoFull } from '@/components/logo/LogoFull'
+import { GUEST_PHOTO_CONSENT_TEXT } from '@/lib/photoShare'
 
 export function GuestLayout() {
   return (
@@ -13,8 +14,7 @@ export function GuestLayout() {
       <footer className="px-4 py-4 text-center border-t border-border/60">
         <p className="text-[10px] text-muted leading-relaxed max-w-sm mx-auto">
           PDPA Notice: Your name is used only to locate your seat at this event. We do not
-          store personal data beyond what the host provides. Photos you upload may be visible
-          to other guests after host approval.
+          store personal data beyond what the host provides. {GUEST_PHOTO_CONSENT_TEXT}
         </p>
       </footer>
     </div>

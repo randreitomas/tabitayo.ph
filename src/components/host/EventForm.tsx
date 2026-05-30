@@ -3,6 +3,7 @@ import type { CreateEventInput, EventTier, GuestLookupMode } from '@/types/event
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { formatTierPrice } from '@/lib/eventApproval'
+import { HOST_PHOTO_GALLERY_ACK_TEXT } from '@/lib/photoShare'
 
 interface EventFormProps {
   onSubmit: (data: CreateEventInput) => Promise<void>
@@ -21,11 +22,20 @@ export function EventForm({ onSubmit, loading }: EventFormProps) {
   const [venue, setVenue] = useState('')
   const [tier, setTier] = useState<EventTier>('standard')
   const [photoShareEnabled, setPhotoShareEnabled] = useState(false)
+  const [photoShareGalleryAck, setPhotoShareGalleryAck] = useState(false)
   const [guestLookupMode, setGuestLookupMode] = useState<GuestLookupMode>('name_only')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    await onSubmit({ name, date, venue, tier, photoShareEnabled, guestLookupMode })
+    await onSubmit({
+      name,
+      date,
+      venue,
+      tier,
+      photoShareEnabled,
+      photoSharePublicGalleryAcknowledged: photoShareEnabled ? photoShareGalleryAck : false,
+      guestLookupMode,
+    })
   }
 
   return (
@@ -119,18 +129,38 @@ export function EventForm({ onSubmit, loading }: EventFormProps) {
         <input
           type="checkbox"
           checked={photoShareEnabled}
-          onChange={(e) => setPhotoShareEnabled(e.target.checked)}
+          onChange={(e) => {
+            const enabled = e.target.checked
+            setPhotoShareEnabled(enabled)
+            if (!enabled) setPhotoShareGalleryAck(false)
+          }}
           disabled={tier !== 'premium'}
         />
         <span className="text-sm">Enable photo share gallery</span>
       </label>
+
+      {photoShareEnabled && tier === 'premium' && (
+        <label className="flex items-start gap-2 cursor-pointer border border-border rounded-sm p-3 bg-border/10">
+          <input
+            type="checkbox"
+            checked={photoShareGalleryAck}
+            onChange={(e) => setPhotoShareGalleryAck(e.target.checked)}
+            className="mt-0.5"
+            required
+          />
+          <span className="text-xs text-muted leading-relaxed">{HOST_PHOTO_GALLERY_ACK_TEXT}</span>
+        </label>
+      )}
 
       <p className="text-xs text-muted leading-relaxed border border-border rounded-sm p-3 bg-border/20">
         After you create this event, pay manually via GCash or bank transfer ({formatTierPrice(tier)}).
         Tabitayo will review your payment and approve your event before the guest page goes live.
       </p>
 
-      <Button type="submit" disabled={loading}>
+      <Button
+        type="submit"
+        disabled={loading || (photoShareEnabled && !photoShareGalleryAck)}
+      >
         {loading ? 'Creating...' : 'Create event'}
       </Button>
     </form>

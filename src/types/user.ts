@@ -1,11 +1,14 @@
 export type UserRole = 'admin' | 'host'
-export type HostStatus = 'pending' | 'approved' | 'suspended'
+/** Matches API `host_status`. */
+export type HostStatus = 'pending' | 'active' | 'disabled'
 
 export interface User {
   id: string
   email: string
   role: UserRole
   displayName: string
+  /** Present when `role === "host"`. */
+  hostStatus?: HostStatus
 }
 
 export interface HostAccount extends User {

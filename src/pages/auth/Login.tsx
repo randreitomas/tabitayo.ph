@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { AuthBackLink } from '@/components/auth/AuthBackLink'
 import { getApiErrorMessage } from '@/lib/api/errors'
 import { USE_MOCK } from '@/lib/api/config'
+import { getPostAuthPath } from '@/lib/hostAccess'
 
 export function Login() {
   const { login, user } = useAuthContext()
@@ -22,8 +23,7 @@ export function Login() {
 
   useEffect(() => {
     if (!user) return
-    const dest = user.role === 'admin' ? '/admin/hosts' : '/host/events'
-    navigate(dest, { replace: true })
+    navigate(getPostAuthPath(user, from), { replace: true })
   }, [user, navigate])
 
   const handleSubmit = async (e: FormEvent) => {
@@ -32,10 +32,7 @@ export function Login() {
     setLoading(true)
     try {
       const loggedIn = await login({ email, password })
-      const dest =
-        from ??
-        (loggedIn.role === 'admin' ? '/admin/hosts' : '/host/events')
-      navigate(dest, { replace: true })
+      navigate(getPostAuthPath(loggedIn, from), { replace: true })
     } catch (err) {
       setError(getApiErrorMessage(err, 'Invalid email or password'))
     } finally {

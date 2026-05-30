@@ -1,4 +1,4 @@
-import type { ActivityLog, ActivityAction } from '@/types/activityLog'
+import type { ActivityLog } from '@/types/activityLog'
 import type { User } from '@/types/user'
 import type { Event } from '@/types/event'
 
@@ -59,12 +59,19 @@ export function configureEventMessage(
   return `${user.displayName} updated ${fields} for ${eventName}`
 }
 
-export const ACTION_BADGE_VARIANT: Record<
-  ActivityAction,
-  'active' | 'ended' | 'pending' | 'default'
-> = {
+const ACTION_BADGE_VARIANT_MAP: Record<string, 'active' | 'ended' | 'pending' | 'default'> = {
   login: 'active',
   logout: 'ended',
   add_event: 'pending',
   configure_event: 'default',
+  'host.account.registered': 'pending',
+  'admin.host.approved': 'active',
+  'admin.host.disabled': 'ended',
+  'admin.host.status_changed': 'default',
+}
+
+export function getActionBadgeVariant(
+  action: string
+): 'active' | 'ended' | 'pending' | 'default' {
+  return ACTION_BADGE_VARIANT_MAP[action] ?? 'default'
 }

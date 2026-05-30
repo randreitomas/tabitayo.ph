@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AuthBackLink } from '@/components/auth/AuthBackLink'
 import { getApiErrorMessage } from '@/lib/api/errors'
+import { getPostAuthPath } from '@/lib/hostAccess'
 
 export function Register() {
   const { register } = useAuthContext()
@@ -23,8 +24,8 @@ export function Register() {
     setError(null)
     setLoading(true)
     try {
-      await register({ email, password, displayName })
-      navigate('/host/events', { replace: true })
+      const registered = await register({ email, password, displayName })
+      navigate(getPostAuthPath(registered), { replace: true })
     } catch (err) {
       setError(getApiErrorMessage(err, 'Registration failed. Please try again.'))
     } finally {

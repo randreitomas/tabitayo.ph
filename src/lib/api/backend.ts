@@ -6,7 +6,7 @@ import type {
   PublicGuestLookupPayload,
   PublicGuestLookupResult,
 } from '@/types/guest'
-import type { HostAccount, LoginInput, RegisterInput, User } from '@/types/user'
+import type { HostAccount, HostStatus, LoginInput, RegisterInput, User } from '@/types/user'
 import type { ActivityLog, ActivityLogFilters } from '@/types/activityLog'
 import { apiClient } from './client'
 import { getApiErrorMessage, isApiNotFound } from './errors'
@@ -14,6 +14,7 @@ import type {
   ApiAuthResponse,
   ApiEvent,
   ApiMenuAssetRead,
+  ApiActivityLog,
   ApiPaymentSubmission,
   ApiPhotoShareItem,
   ApiQrCode,
@@ -26,6 +27,7 @@ import {
   mapGuestLookupResult,
   mapGuestSuggestions,
   mapHostAccount,
+  mapActivityLog,
   mapMenuAssetRead,
   mapPhotoShareItem,
   mapPublicEvent,
@@ -321,15 +323,36 @@ export async function backendDeleteGuest(eventId: string, guestId: string): Prom
 
 // ——— Admin ———
 
-export async function backendGetAdminUsers(): Promise<HostAccount[]> {
-  const { data } = await apiClient.get('/admin/users', { params: { role: 'host', limit: 50 } })
-  const users = unwrapList<import('./dto').ApiUser>(data)
-  const hosts = users.filter((u) => u.role === 'host')
+export interface AdminUsersQuery {
+  role?: 'admin' | 'host'
+  hostStatus?: HostStatus
+  limit?: number
+  offset?: number
+}
+
+async function hostEventCounts(): Promise<Map<string, number>> {
   const events = await backendGetAdminEvents()
   const countByHost = new Map<string, number>()
   for (const e of events) {
     countByHost.set(e.hostId, (countByHost.get(e.hostId) ?? 0) + 1)
   }
+  return countByHost
+}
+
+export async function backendGetAdminUsers(
+  query: AdminUsersQuery = {}
+): Promise<HostAccount[]> {
+  const { data } = await apiClient.get('/admin/users', {
+    params: {
+      role: query.role ?? 'host',
+      host_status: query.hostStatus,
+      limit: query.limit ?? 50,
+      offset: query.offset ?? 0,
+    },
+  })
+  const users = unwrapList<import('./dto').ApiUser>(data)
+  const hosts = users.filter((u) => u.role === 'host')
+  const countByHost = await hostEventCounts()
   return hosts.map((h) => mapHostAccount(h, countByHost.get(h.id) ?? 0))
 }
 
@@ -383,10 +406,19 @@ export async function backendRejectEvent(eventId: string, reason?: string): Prom
 }
 
 export async function backendUpdateHostStatus(
-  _hostId: string,
-  _status: HostAccount['status']
+  hostId: string,
+  hostStatus: HostStatus,
+  reason?: string
 ): Promise<HostAccount> {
-  throw new Error('Host account status changes are not supported by the API yet.')
+  const body: { host_status: HostStatus; reason?: string } = { host_status: hostStatus }
+  if (reason?.trim()) body.reason = reason.trim()
+
+  const { data } = await apiClient.patch<import('./dto').ApiUser>(
+    `/admin/users/${encodeURIComponent(hostId)}/host-status`,
+    body
+  )
+  const countByHost = await hostEventCounts()
+  return mapHostAccount(data, countByHost.get(hostId) ?? 0)
 }
 
 export async function backendSubmitEventPayment(eventId: string): Promise<Event> {
@@ -394,9 +426,22 @@ export async function backendSubmitEventPayment(eventId: string): Promise<Event>
 }
 
 export async function backendGetActivityLogs(
-  _filters?: ActivityLogFilters
+  filters: ActivityLogFilters = {}
 ): Promise<ActivityLog[]> {
-  return []
+  const params: Record<string, string | number> = {
+    limit: filters.limit ?? 50,
+    offset: filters.offset ?? 0,
+  }
+  if (filters.fromDate) params.start_date = filters.fromDate
+  if (filters.toDate) params.end_date = filters.toDate
+  if (filters.action && filters.action !== 'all') params.action = filters.action
+  if (filters.actorUserId) params.actor_user_id = filters.actorUserId
+  if (filters.eventId) params.event_id = filters.eventId
+  if (filters.targetType) params.target_type = filters.targetType
+  if (filters.targetId) params.target_id = filters.targetId
+
+  const { data } = await apiClient.get('/admin/activity-logs', { params })
+  return unwrapList<ApiActivityLog>(data).map(mapActivityLog)
 }
 
 export async function backendUploadGuestPhoto(

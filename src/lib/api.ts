@@ -114,6 +114,7 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
     email: input.email,
     role: 'host',
     displayName: input.displayName,
+    hostStatus: 'pending',
   }
   hosts = [
     ...hosts,
@@ -673,26 +674,34 @@ export async function deleteEventPhoto(eventId: string, photoId: string): Promis
 
 // ——— Admin ———
 
-export async function getAllHosts(): Promise<HostAccount[]> {
+export async function getAllHosts(hostStatus?: HostAccount['status']): Promise<HostAccount[]> {
   if (!USE_MOCK) {
-    return backend.backendGetAdminUsers()
+    return backend.backendGetAdminUsers(
+      hostStatus ? { role: 'host', hostStatus } : { role: 'host' }
+    )
   }
 
-  return delay([...hosts])
+  const list = hostStatus ? hosts.filter((h) => h.status === hostStatus) : hosts
+  return delay([...list])
 }
 
 export async function updateHostStatus(
   hostId: string,
-  status: HostAccount['status']
+  status: HostAccount['status'],
+  reason?: string
 ): Promise<HostAccount> {
   if (!USE_MOCK) {
-    return backend.backendUpdateHostStatus(hostId, status)
+    return backend.backendUpdateHostStatus(hostId, status, reason)
   }
 
   const idx = hosts.findIndex((h) => h.id === hostId)
   if (idx === -1) throw new Error('Host not found')
   hosts[idx] = { ...hosts[idx], status }
   return delay(hosts[idx])
+}
+
+export async function getHostApprovalHistory(hostId: string): Promise<ActivityLog[]> {
+  return getActivityLogs({ targetType: 'user', targetId: hostId, limit: 50 })
 }
 
 export async function submitEventPayment(eventId: string): Promise<Event> {

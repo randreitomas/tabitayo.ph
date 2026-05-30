@@ -19,11 +19,14 @@ export function toSpotifyPlaylistUrl(raw: string): string | null {
   return `https://open.spotify.com/playlist/${id}`
 }
 
+/** Compact guest embed height (Spotify’s horizontal player bar). */
+export const SPOTIFY_EMBED_HEIGHT = 80
+
 /** URL used as iframe `src` on the guest page. */
 export function toSpotifyEmbedUrl(raw: string): string | null {
   const id = parseSpotifyPlaylistId(raw)
   if (!id) return null
-  return `https://open.spotify.com/embed/playlist/${id}?utm_source=generator`
+  return `https://open.spotify.com/embed/playlist/${id}?utm_source=generator&theme=0`
 }
 
 export function spotifyInputHint(): string {

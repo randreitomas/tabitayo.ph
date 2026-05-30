@@ -1,6 +1,6 @@
 import type { Event } from '@/types/event'
 import { hasMenuForGuests, inferMenuDisplayMode } from '@/lib/menu'
-import { toSpotifyEmbedUrl } from '@/lib/spotify'
+import { SPOTIFY_EMBED_HEIGHT, toSpotifyEmbedUrl } from '@/lib/spotify'
 import { FloorPlan } from '@/components/guest/FloorPlan'
 import { MenuDisplay } from '@/components/guest/MenuDisplay'
 import { PhotoGallery } from '@/components/guest/PhotoGallery'
@@ -42,17 +42,23 @@ export function EventDetails({ event, lookupToken }: EventDetailsProps) {
       )}
 
       {showPlaylist && (
-        <div>
-          <h3 className="font-heading text-xl text-center mb-3">Playlist</h3>
-          <iframe
-            src={spotifyEmbedSrc!}
-            width="100%"
-            height="152"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            className="rounded-sm border border-border"
-            title="Event playlist"
-          />
+        <div className="space-y-3">
+          <h3 className="font-heading text-xl text-center">Playlist</h3>
+          <div
+            className="overflow-hidden rounded-sm border border-border"
+            style={{ height: SPOTIFY_EMBED_HEIGHT }}
+          >
+            <iframe
+              src={spotifyEmbedSrc!}
+              width="100%"
+              height={SPOTIFY_EMBED_HEIGHT}
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              className="block w-full border-0"
+              style={{ height: SPOTIFY_EMBED_HEIGHT }}
+              title="Event playlist"
+            />
+          </div>
         </div>
       )}
 

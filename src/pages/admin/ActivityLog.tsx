@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getActivityLogs } from '@/lib/api'
-import { USE_MOCK } from '@/lib/api/config'
 import type { ActivityLog, ActivityLogFilters } from '@/types/activityLog'
-import { ACTIVITY_ACTION_LABELS } from '@/types/activityLog'
-import { ACTION_BADGE_VARIANT } from '@/lib/activityLog'
+import {
+  formatActivityAction,
+  HOST_APPROVAL_ACTION_LABELS,
+  LEGACY_ACTIVITY_ACTION_LABELS,
+} from '@/types/activityLog'
+import { getActionBadgeVariant } from '@/lib/activityLog'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -12,10 +15,14 @@ import { PageHeader } from '@/components/ui/PageHeader'
 
 const ACTION_OPTIONS: { value: ActivityLogFilters['action']; label: string }[] = [
   { value: 'all', label: 'All actions' },
-  { value: 'login', label: ACTIVITY_ACTION_LABELS.login },
-  { value: 'logout', label: ACTIVITY_ACTION_LABELS.logout },
-  { value: 'add_event', label: ACTIVITY_ACTION_LABELS.add_event },
-  { value: 'configure_event', label: ACTIVITY_ACTION_LABELS.configure_event },
+  ...Object.entries(LEGACY_ACTIVITY_ACTION_LABELS).map(([value, label]) => ({
+    value,
+    label,
+  })),
+  ...Object.entries(HOST_APPROVAL_ACTION_LABELS).map(([value, label]) => ({
+    value,
+    label,
+  })),
 ]
 
 function formatDateTime(iso: string): string {
@@ -64,11 +71,7 @@ export function ActivityLogPage() {
     <div className="space-y-8">
       <PageHeader
         title="Activity log"
-        description={
-          USE_MOCK
-            ? 'Platform sign-ins, sign-outs, and event changes across all hosts.'
-            : 'Activity logging is not exposed on the API yet. Entries appear here in mock mode only.'
-        }
+        description="Platform sign-ins, host approvals, and event changes across all hosts."
       />
 
       <Card padding="md">
@@ -86,7 +89,7 @@ export function ActivityLogPage() {
               className="w-full px-3 py-2.5 bg-ivory border border-border rounded-sm font-body text-sm focus:outline-none focus:border-dark/40"
             >
               {ACTION_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+                <option key={String(opt.value)} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
@@ -147,8 +150,8 @@ export function ActivityLogPage() {
                     {formatDateTime(log.occurredAt)}
                   </td>
                   <td className="px-3 py-3 align-top whitespace-nowrap">
-                    <Badge variant={ACTION_BADGE_VARIANT[log.action]}>
-                      {ACTIVITY_ACTION_LABELS[log.action]}
+                    <Badge variant={getActionBadgeVariant(log.action)}>
+                      {formatActivityAction(log.action)}
                     </Badge>
                   </td>
                   <td className="px-3 py-3 align-top whitespace-nowrap">
@@ -156,7 +159,17 @@ export function ActivityLogPage() {
                     <span className="block text-xs text-muted">{log.actorEmail}</span>
                     <span className="block text-xs text-muted capitalize">{log.actorRole}</span>
                   </td>
-                  <td className="px-3 py-3 align-top text-dark/90">{log.message}</td>
+                  <td className="px-3 py-3 align-top text-dark/90">
+                    {log.message}
+                    {log.eventName && (
+                      <span className="block text-xs text-muted mt-1">Event: {log.eventName}</span>
+                    )}
+                    {log.targetType === 'user' && log.targetId && (
+                      <span className="block text-xs text-muted mt-1">
+                        Host ID: {log.targetId}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

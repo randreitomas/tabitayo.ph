@@ -16,6 +16,7 @@ import type {
   PublicGuestLookupResult,
   SeatConfirmationStatus,
 } from '@/types/guest'
+import type { ActivityLog } from '@/types/activityLog'
 import type { HostAccount, HostStatus, User, UserRole } from '@/types/user'
 import type {
   ApiAuthResponse,
@@ -26,6 +27,7 @@ import type {
   ApiGuestSearchResult,
   ApiMenuAssetRead,
   ApiMenuJson,
+  ApiActivityLog,
   ApiPhotoShareItem,
   ApiPublicEvent,
   ApiPublicGuestSuggestionResponse,
@@ -36,15 +38,10 @@ import type {
 import { resolveMediaUrl } from './mediaUrl'
 
 function mapHostStatus(status?: string | null): HostStatus {
-  switch (status) {
-    case 'active':
-    case 'approved':
-      return 'approved'
-    case 'suspended':
-      return 'suspended'
-    default:
-      return 'pending'
-  }
+  if (status === 'active' || status === 'disabled' || status === 'pending') return status
+  if (status === 'approved') return 'active'
+  if (status === 'suspended') return 'disabled'
+  return 'pending'
 }
 
 function mapSetup(dto?: ApiEventSetup): EventSetup | undefined {
@@ -63,12 +60,16 @@ function mapGuestLookupMode(mode?: string): GuestLookupMode {
 }
 
 export function mapUser(dto: ApiUser): User {
-  return {
+  const user: User = {
     id: dto.id,
     email: dto.email,
     role: dto.role as UserRole,
     displayName: dto.display_name,
   }
+  if (dto.role === 'host') {
+    user.hostStatus = mapHostStatus(dto.host_status)
+  }
+  return user
 }
 
 export function mapHostAccount(dto: ApiUser, eventCount = 0): HostAccount {
@@ -303,6 +304,23 @@ export function unwrapGuestList(data: unknown): ApiGuest[] {
   if (Array.isArray(data)) return data as ApiGuest[]
   const obj = data as { items?: ApiGuest[]; guests?: ApiGuest[] }
   return obj.items ?? obj.guests ?? []
+}
+
+export function mapActivityLog(dto: ApiActivityLog): ActivityLog {
+  return {
+    id: dto.id,
+    action: dto.action,
+    occurredAt: dto.created_at,
+    actorId: dto.actor_user_id,
+    actorEmail: dto.actor_email,
+    actorName: dto.actor_display_name,
+    actorRole: dto.actor_role === 'admin' ? 'admin' : 'host',
+    message: dto.message,
+    eventId: dto.event_id ?? undefined,
+    eventName: dto.event_name ?? undefined,
+    targetType: dto.target_type ?? undefined,
+    targetId: dto.target_id ?? undefined,
+  }
 }
 
 export function mapPhotoShareItem(dto: ApiPhotoShareItem, eventId = ''): PhotoShareItem {

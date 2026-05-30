@@ -143,6 +143,21 @@ export interface ApiPaymentSubmission {
   updated_at?: string
 }
 
+export interface ApiActivityLog {
+  id: string
+  actor_user_id: string
+  actor_role: string
+  actor_email: string
+  actor_display_name: string
+  event_id?: string | null
+  event_name?: string | null
+  action: string
+  target_type?: string | null
+  target_id?: string | null
+  message: string
+  created_at: string
+}
+
 export interface ApiPhotoShareItem {
   id: string
   event_id?: string

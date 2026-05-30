@@ -7,6 +7,7 @@ import { EventPage } from '@/pages/guest/EventPage'
 import { Login } from '@/pages/auth/Login'
 import { Register } from '@/pages/auth/Register'
 import { HostDashboard } from '@/pages/host/Dashboard'
+import { HostPendingApproval } from '@/pages/host/PendingApproval'
 import { CreateEvent } from '@/pages/host/CreateEvent'
 import { EventDetail } from '@/pages/host/EventDetail'
 import { QRPage } from '@/pages/host/QRPage'
@@ -56,6 +57,15 @@ export default function App() {
           <Route element={<GuestLayout />}>
             <Route path="/e/:eventId" element={<EventPage />} />
           </Route>
+
+          <Route
+            path="/host/pending"
+            element={
+              <ProtectedRoute role="host">
+                <HostPendingApproval />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/host"

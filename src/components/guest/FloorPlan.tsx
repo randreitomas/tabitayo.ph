@@ -15,13 +15,14 @@ export function FloorPlan({ imageUrl, eventName }: FloorPlanProps) {
   }
 
   return (
-    <div className="space-y-2">
+    <div>
+      <h3 className="font-heading text-xl text-center mb-4">Floor Plan</h3>
       <MediaImage
         src={imageUrl}
         alt={`Floor plan for ${eventName}`}
         className="w-full rounded-sm border border-border object-cover max-h-80"
       />
-      <p className="text-xs text-muted text-center">Pinch to zoom on your device</p>
+      <p className="text-xs text-muted text-center mt-2">Pinch to zoom on your device</p>
     </div>
   )
 }

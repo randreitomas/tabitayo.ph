@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import type { PhotoShareItem } from '@/types/event'
 import { getApprovedPhotos, uploadGuestPhoto } from '@/lib/api'
-import { USE_MOCK } from '@/lib/api/config'
 import { getApiErrorCode, getPhotoUploadErrorMessage } from '@/lib/api/errors'
 import {
   isUploadableImage,
@@ -13,6 +12,7 @@ import { MediaImage } from '@/components/ui/MediaImage'
 import { Button } from '@/components/ui/Button'
 
 const MAX_CAPTION_LENGTH = 500
+const GALLERY_REFRESH_MS = 30_000
 
 interface PhotoGalleryProps {
   lookupToken: string
@@ -27,14 +27,32 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
   const [unavailable, setUnavailable] = useState(false)
 
   const loadApproved = useCallback(async () => {
-    if (!USE_MOCK || !enabled) return
-    const data = await getApprovedPhotos(lookupToken)
-    setPhotos(data)
+    if (!enabled) return
+    try {
+      const data = await getApprovedPhotos(lookupToken)
+      setPhotos(data)
+    } catch {
+      /* keep last loaded gallery on transient errors */
+    }
   }, [lookupToken, enabled])
 
   useEffect(() => {
     void loadApproved()
   }, [loadApproved])
+
+  useEffect(() => {
+    if (!enabled) return
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void loadApproved()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    const interval = window.setInterval(() => void loadApproved(), GALLERY_REFRESH_MS)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.clearInterval(interval)
+    }
+  }, [enabled, loadApproved])
 
   const onDrop = useCallback(
     async (files: File[]) => {
@@ -55,8 +73,7 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
       try {
         await uploadGuestPhoto(lookupToken, file, caption)
         setCaption('')
-        setMessage('Photo submitted for review.')
-        if (USE_MOCK) await loadApproved()
+        setMessage('Photo submitted for review. It will appear here once the host approves it.')
       } catch (err) {
         if (getApiErrorCode(err) === 'photo_share_unavailable') setUnavailable(true)
         setMessage(getPhotoUploadErrorMessage(err))
@@ -64,7 +81,7 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
         setUploading(false)
       }
     },
-    [lookupToken, caption, loadApproved]
+    [lookupToken, caption]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -89,72 +106,86 @@ export function PhotoGallery({ lookupToken, enabled }: PhotoGalleryProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-heading text-xl text-center">Share a moment</h3>
-
-      {USE_MOCK && photos.length > 0 && (
-        <div className="grid grid-cols-2 gap-2">
-          {photos.map((photo) => (
-            <figure
-              key={photo.id}
-              className="aspect-square overflow-hidden rounded-sm border border-border"
-            >
-              <MediaImage
-                src={photo.imageUrl}
-                alt={photo.caption ?? 'Event photo'}
-                className="w-full h-full object-cover"
-              />
-            </figure>
-          ))}
+    <div className="space-y-6">
+      {photos.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-heading text-xl text-center">Shared moments</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {photos.map((photo) => (
+              <figure
+                key={photo.id}
+                className="overflow-hidden rounded-sm border border-border bg-ivory"
+              >
+                <MediaImage
+                  src={photo.imageUrl}
+                  alt={photo.caption ?? 'Event photo'}
+                  className="w-full aspect-square object-cover"
+                />
+                {photo.caption && (
+                  <figcaption className="px-2 py-1.5 text-[11px] text-muted line-clamp-2">
+                    {photo.caption}
+                  </figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
         </div>
       )}
 
-      <label className="block space-y-1">
-        <span className="text-xs text-muted">Caption (optional)</span>
-        <textarea
-          value={caption}
-          onChange={(e) => setCaption(e.target.value.slice(0, MAX_CAPTION_LENGTH))}
-          maxLength={MAX_CAPTION_LENGTH}
-          rows={2}
-          placeholder="Add a short note about this photo..."
-          className="w-full border border-border rounded-sm px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-dusty-rose"
-          disabled={uploading}
-        />
-        <span className="text-[10px] text-muted block text-right">
-          {caption.length}/{MAX_CAPTION_LENGTH}
-        </span>
-      </label>
+      <div className="space-y-4">
+        <h3 className="font-heading text-xl text-center">Share a moment</h3>
 
-      <div
-        {...getRootProps()}
-        className={[
-          'border-2 border-dashed rounded-sm p-6 text-center cursor-pointer transition-colors',
-          isDragActive ? 'border-dusty-rose bg-dusty-rose/10' : 'border-border hover:border-dusty-rose/60',
-          uploading ? 'opacity-50 pointer-events-none' : '',
-        ].join(' ')}
-      >
-        <input {...getInputProps()} />
-        <p className="text-sm text-muted">
-          {uploading ? 'Uploading...' : 'Tap to upload a photo (JPEG, PNG, or WebP, max 5 MB)'}
-        </p>
-      </div>
+        {photos.length === 0 && (
+          <p className="text-sm text-muted text-center">
+            No photos yet. Be the first to share a moment from this event.
+          </p>
+        )}
 
-      {message && (
-        <p
+        <label className="block space-y-1">
+          <span className="text-xs text-muted">Caption (optional)</span>
+          <textarea
+            value={caption}
+            onChange={(e) => setCaption(e.target.value.slice(0, MAX_CAPTION_LENGTH))}
+            maxLength={MAX_CAPTION_LENGTH}
+            rows={2}
+            placeholder="Add a short note about this photo..."
+            className="w-full border border-border rounded-sm px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-dusty-rose"
+            disabled={uploading}
+          />
+          <span className="text-[10px] text-muted block text-right">
+            {caption.length}/{MAX_CAPTION_LENGTH}
+          </span>
+        </label>
+
+        <div
+          {...getRootProps()}
           className={[
-            'text-xs text-center',
-            message.includes('submitted') ? 'text-dark' : 'text-muted',
+            'border-2 border-dashed rounded-sm p-6 text-center cursor-pointer transition-colors',
+            isDragActive ? 'border-dusty-rose bg-dusty-rose/10' : 'border-border hover:border-dusty-rose/60',
+            uploading ? 'opacity-50 pointer-events-none' : '',
           ].join(' ')}
         >
-          {message}
-        </p>
-      )}
+          <input {...getInputProps()} />
+          <p className="text-sm text-muted">
+            {uploading ? 'Uploading...' : 'Tap to upload a photo (JPEG, PNG, or WebP, max 5 MB)'}
+          </p>
+        </div>
 
-      {USE_MOCK && (
+        {message && (
+          <p
+            className={[
+              'text-xs text-center',
+              message.includes('submitted') ? 'text-dark' : 'text-muted',
+            ].join(' ')}
+          >
+            {message}
+          </p>
+        )}
+
         <Button variant="ghost" size="sm" onClick={() => void loadApproved()} className="mx-auto block">
           Refresh gallery
         </Button>
-      )}
+      </div>
     </div>
   )
 }

@@ -315,13 +315,13 @@ export async function getEventGuests(eventId: string): Promise<Guest[]> {
   return delay(guests.filter((g) => g.eventId === event.id))
 }
 
-export async function getApprovedPhotos(eventId: string): Promise<PhotoShareItem[]> {
+export async function getApprovedPhotos(lookupToken: string): Promise<PhotoShareItem[]> {
   if (!USE_MOCK) {
-    return []
+    return backend.backendGetPublicApprovedPhotos(lookupToken)
   }
 
   return delay(
-    photos.filter((p) => p.eventId === eventId && p.status === 'approved')
+    photos.filter((p) => p.eventId === lookupToken && p.status === 'approved')
   )
 }
 

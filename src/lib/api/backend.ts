@@ -465,6 +465,22 @@ export async function backendUploadGuestPhoto(
   return mapPhotoShareItem(data, lookupToken)
 }
 
+export async function backendGetPublicApprovedPhotos(
+  lookupToken: string
+): Promise<PhotoShareItem[]> {
+  try {
+    const { data } = await apiClient.get(
+      `/public/events/${encodeURIComponent(lookupToken)}/photos`
+    )
+    return unwrapList<ApiPhotoShareItem>(data)
+      .map((item) => mapPhotoShareItem(item, lookupToken))
+      .filter((photo) => photo.status === 'approved')
+  } catch (err) {
+    if (isApiNotFound(err)) return []
+    throw new Error(getApiErrorMessage(err, 'Could not load event photos.'))
+  }
+}
+
 export async function backendGetEventPhotos(eventId: string): Promise<PhotoShareItem[]> {
   const { data } = await apiClient.get(
     `/host/events/${encodeURIComponent(eventId)}/photos`
